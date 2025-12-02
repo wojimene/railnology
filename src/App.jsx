@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_URL = import.meta.env.https://railnology-api.onrender.com || "http://localhost:5000/api"; 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"; 
 
 // --- Branding Constants ---
 const BRAND = {
