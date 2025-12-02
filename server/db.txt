@@ -1,2 +1,0 @@
-mongodb://admin1:gRRE0ua7R0GWidQmZr1hVIJmDksoZeycxo5Xt6n-zuGn3oFx@13eb9c56-ed25-4e5f-8879-7795281a53d9.nam5.firestore.goog:443/default?loadBalanced=true&tls=true&authMechanism=SCRAM-SHA-256&retryWrites=false
-ecdsa-sha2-nistp384-ellabinghamtonoscarjacksonville
