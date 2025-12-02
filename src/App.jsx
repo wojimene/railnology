@@ -7,7 +7,12 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"; 
+// ⚠️ DEPLOYMENT INSTRUCTION:
+// When pushing to Vercel, UNCOMMENT the line below starting with 'import.meta.env'
+// and COMMENT OUT the line 'const API_URL = "http://localhost:5000/api";'
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+//const API_URL = "http://localhost:5000/api";
 
 // --- Branding Constants ---
 const BRAND = {
@@ -240,6 +245,22 @@ const LoadingScreen = () => (
   <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400">
     <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" />
     <p className="text-xs font-bold uppercase tracking-widest">Connecting...</p>
+  </div>
+);
+
+const ErrorScreen = ({ msg }) => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center">
+    <ServerCrash className="w-12 h-12 text-slate-300 mb-4" />
+    <p className="text-sm font-bold text-slate-600 mb-2">Server Connection Failed</p>
+    <p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p>
+    <div className="mt-6 bg-slate-100 p-4 rounded-xl text-left border border-slate-200 w-full max-w-sm">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Troubleshooting:</p>
+      <ul className="text-[11px] text-slate-600 space-y-2 list-disc list-inside">
+        <li>Ensure <strong>server.js</strong> is running (<code className="bg-slate-200 px-1 rounded">node server/server.js</code>).</li>
+        <li>Check if MongoDB is connected in the server terminal.</li>
+        <li>Verify port 5000 is open.</li>
+      </ul>
+    </div>
   </div>
 );
 
