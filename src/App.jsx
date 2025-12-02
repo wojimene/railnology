@@ -3,26 +3,25 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon
 } from 'lucide-react';
 
 // ==========================================
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ OPTION A: REAL CLERK (Uncomment for Local/Production):
+// 🅰️ REAL CLERK (Uncomment this line for Local/Production use):
  import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-  http://googleusercontent.com/immersive_entry_chip/1
-  
+
 // ==========================================
 // 2. CONFIGURATION SETUP
 // ==========================================
 
-// 🅰️ OPTION A: PRODUCTION (Uncomment for Vercel):
- const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// 🅰️ PRODUCTION (Uncomment for Vercel deployment):
+// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-// 🅱️ OPTION B: LOCAL/PREVIEW (Active for now):
-//const API_URL = "http://localhost:5000/api";
+// 🅱️ LOCAL/PREVIEW (Active for now):
+const API_URL = "http://localhost:5000/api";
 
 
 // --- CLERK KEY ---
@@ -43,7 +42,7 @@ const FALLBACK_JOBS = [
   { id: 2, title: "Track Inspector (Geometry)", company: "Canadian National", location: "Chicago, IL", salary: "$36/hr + Benefits", category: "Engineering", tags: ["Urgent", "Travel Required"] },
 ];
 const FALLBACK_GLOSSARY = [
-  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "pantograph mechanism diagram" },
+  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png" },
 ];
 const FALLBACK_SIGNALS = [
   { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
@@ -176,6 +175,26 @@ const AdminView = ({ refreshData, isOffline }) => {
           <>
             <AdminInput label="Term" value={termForm.term} onChange={e => setTermForm({...termForm, term: e.target.value})} />
             <textarea className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm h-20 mb-3" placeholder="Definition..." value={termForm.def} onChange={e => setTermForm({...termForm, def: e.target.value})}></textarea>
+            
+            {/* IMAGE URL INPUT */}
+            <div className="mb-3">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Image URL (Optional)</label>
+              <div className="flex items-center">
+                <input 
+                  type="text"
+                  placeholder="https://example.com/image.png"
+                  className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm"
+                  value={termForm.visualTag}
+                  onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})}
+                />
+                {/* Preview Thumbnail */}
+                {termForm.visualTag && (
+                  <div className="ml-2 w-8 h-8 rounded border border-slate-200 overflow-hidden flex-shrink-0">
+                    <img src={termForm.visualTag} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
         <button onClick={handleSubmit} disabled={isOffline} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Save Data</button>
@@ -235,6 +254,30 @@ const HomeView = ({ changeTab, jobs }) => (
 const LearnView = ({ glossary }) => {
   const [term, setTerm] = useState('');
   const filtered = useMemo(() => glossary.filter(g => (g.term || '').toLowerCase().includes(term.toLowerCase())), [term, glossary]);
+  
+  // --- VISUAL CARD (Updated to render Images) ---
+  const VisualCard = ({ item }) => (
+    <div className="mt-3 bg-slate-50 rounded-lg border border-slate-200 p-3">
+      <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+        <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
+      </div>
+      <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
+         {item.visualTag && item.visualTag.startsWith('http') ? (
+           <img 
+             src={item.visualTag} 
+             alt={item.term} 
+             className="w-full h-auto max-h-48 object-contain rounded"
+             onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
+           />
+         ) : (
+           <div className="text-slate-400 text-xs italic mb-2 py-4">
+             {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
+           </div>
+         )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
       <SectionTitle title="Visual Dictionary" subtitle="Technical definitions." />
@@ -244,6 +287,7 @@ const LearnView = ({ glossary }) => {
           <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-lg text-slate-900">{item.term}</h3>
             <p className="text-sm text-slate-600 mt-2">{item.def}</p>
+            {item.hasVisual && <VisualCard item={item} />}
           </div>
         ))}
       </div>
@@ -313,8 +357,7 @@ const MainContent = () => {
   useEffect(() => { fetchData(); }, []);
 
   // --- ADMIN CHECK LOGIC ---
-  // Replace this email with your Clerk email to secure the panel!
-  const ADMIN_EMAIL = "winstonjimenez@gmail.com"; 
+  const ADMIN_EMAIL = "wayne@railnology.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
