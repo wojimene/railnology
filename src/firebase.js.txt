@@ -1,0 +1,21 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+// PASTE YOUR CONFIG FROM FIREBASE CONSOLE BELOW
+// It should look something like this:
+const firebaseConfig = {
+  apiKey: "AIzaSyD-YOUR_ACTUAL_API_KEY_HERE",
+  authDomain: "railnology-xxxxx.firebaseapp.com",
+  projectId: "railnology-xxxxx",
+  storageBucket: "railnology-xxxxx.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456:web:xxxxx"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Initialize Cloud Firestore and get a reference to the service
+const db = getFirestore(app);
+
+export { db };
