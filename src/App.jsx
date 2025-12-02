@@ -18,10 +18,10 @@ import {
 // ==========================================
 
 // 🅰️ OPTION A: PRODUCTION (Uncomment for Vercel):
-// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // 🅱️ OPTION B: LOCAL/PREVIEW (Active for now):
-const API_URL = "http://localhost:5000/api";
+//const API_URL = "http://localhost:5000/api";
 
 
 // --- CLERK KEY ---
@@ -313,7 +313,7 @@ const MainContent = () => {
 
   // --- ADMIN CHECK LOGIC ---
   // Replace this email with your Clerk email to secure the panel!
-  const ADMIN_EMAIL = "your-email@gmail.com"; 
+  const ADMIN_EMAIL = "winstonjimenez@gmail.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
