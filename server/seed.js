@@ -20,7 +20,7 @@ const GlossarySchema = new mongoose.Schema({
   term: String,
   def: String,
   hasVisual: Boolean,
-  visualTag: String // Now stores a URL!
+  visualTag: String 
 });
 
 const SignalSchema = new mongoose.Schema({
@@ -34,7 +34,7 @@ const Job = mongoose.model('Job', JobSchema);
 const Glossary = mongoose.model('Glossary', GlossarySchema);
 const Signal = mongoose.model('Signal', SignalSchema);
 
-// --- INITIAL DATA (Now with Real Images!) ---
+// --- INITIAL DATA ---
 const JOBS = [
   { title: "Senior Locomotive Engineer", company: "BNSF Railway", location: "Fort Worth, TX", salary: "$95k - $125k", category: "Field", tags: ["Sign-on Bonus", "Union"] },
   { title: "Track Inspector (Geometry)", company: "Canadian National", location: "Chicago, IL", salary: "$36/hr + Benefits", category: "Engineering", tags: ["Urgent", "Travel Required"] },
@@ -44,6 +44,7 @@ const JOBS = [
   { title: "Project Engineer (Civil)", company: "Amtrak", location: "Philadelphia, PA", salary: "$105k - $135k", category: "Engineering", tags: ["Hybrid", "Northeast Corridor"] }
 ];
 
+// ✅ Verified Full URLs
 const GLOSSARY = [
   { 
     term: "Pantograph", 
