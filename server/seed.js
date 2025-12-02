@@ -1,4 +1,4 @@
-console.log("--- SCRIPT STARTING ---"); // Debug line to confirm file is running
+console.log("--- SCRIPT STARTING ---");
 
 import mongoose from 'mongoose';
 
@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 // PASTE YOUR MONGODB CONNECTION STRING HERE
 const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
 
-// --- SCHEMAS (Must match server.js) ---
+// --- SCHEMAS ---
 const JobSchema = new mongoose.Schema({
   title: String,
   company: String,
@@ -20,7 +20,7 @@ const GlossarySchema = new mongoose.Schema({
   term: String,
   def: String,
   hasVisual: Boolean,
-  visualTag: String
+  visualTag: String // Now stores a URL!
 });
 
 const SignalSchema = new mongoose.Schema({
@@ -34,7 +34,7 @@ const Job = mongoose.model('Job', JobSchema);
 const Glossary = mongoose.model('Glossary', GlossarySchema);
 const Signal = mongoose.model('Signal', SignalSchema);
 
-// --- INITIAL DATA ---
+// --- INITIAL DATA (Now with Real Images!) ---
 const JOBS = [
   { title: "Senior Locomotive Engineer", company: "BNSF Railway", location: "Fort Worth, TX", salary: "$95k - $125k", category: "Field", tags: ["Sign-on Bonus", "Union"] },
   { title: "Track Inspector (Geometry)", company: "Canadian National", location: "Chicago, IL", salary: "$36/hr + Benefits", category: "Engineering", tags: ["Urgent", "Travel Required"] },
@@ -45,15 +45,40 @@ const JOBS = [
 ];
 
 const GLOSSARY = [
-  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power through contact with an overhead catenary wire.", hasVisual: true, visualTag: "pantograph mechanism diagram" },
-  { term: "Bogie (Truck)", def: "A chassis or framework carrying wheels, attached to a vehicle, serving as a modular subassembly of wheels and axles.", hasVisual: true, visualTag: "train bogie suspension diagram" },
-  { term: "Cant (Superelevation)", def: "The difference in elevation between the two rails on a curve, designed to counteract centrifugal force.", hasVisual: true, visualTag: "railway track superelevation diagram" },
-  { term: "Semaphore Signal", def: "A mechanical railway signal displaying information by the position of a moving arm (blade).", hasVisual: true, visualTag: "railway semaphore signal meanings" },
-  { term: "Fishplate", def: "A metal bar that is bolted to the ends of two rails to join them together in a track.", hasVisual: true, visualTag: "railway fishplate joint" },
-  { term: "Interlocking", def: "An arrangement of signal apparatus that prevents conflicting movements through an arrangement of tracks (junctions/crossings).", hasVisual: false },
-  { term: "Ballast", def: "Crushed stones beneath the track that hold ties in place and allow drainage.", hasVisual: false },
-  { term: "Standard Gauge", def: "The most common spacing of rail tracks globally: 1,435 mm (4 ft 8 1⁄2 in).", hasVisual: false },
-  { term: "Deadman's Switch", def: "A safety device that automatically applies the brakes if the human operator becomes incapacitated.", hasVisual: false }
+  { 
+    term: "Pantograph", 
+    def: "An apparatus mounted on the roof of an electric train to collect power through contact with an overhead catenary wire.", 
+    hasVisual: true, 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png" 
+  },
+  { 
+    term: "Bogie (Truck)", 
+    def: "A chassis or framework carrying wheels, attached to a vehicle, serving as a modular subassembly of wheels and axles.", 
+    hasVisual: true, 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Bogie_schema.svg/640px-Bogie_schema.svg.png" 
+  },
+  { 
+    term: "Cant (Superelevation)", 
+    def: "The difference in elevation between the two rails on a curve, designed to counteract centrifugal force.", 
+    hasVisual: true, 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cant_and_cant_deficiency.svg/640px-Cant_and_cant_deficiency.svg.png" 
+  },
+  { 
+    term: "Semaphore Signal", 
+    def: "A mechanical railway signal displaying information by the position of a moving arm (blade).", 
+    hasVisual: true, 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Gwr_lower_quadrant_signal_diagram.svg/320px-Gwr_lower_quadrant_signal_diagram.svg.png" 
+  },
+  { 
+    term: "Fishplate", 
+    def: "A metal bar that is bolted to the ends of two rails to join them together in a track.", 
+    hasVisual: true, 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rail_joint_fishplate.jpg/640px-Rail_joint_fishplate.jpg" 
+  },
+  { term: "Interlocking", def: "An arrangement of signal apparatus that prevents conflicting movements through an arrangement of tracks.", hasVisual: false, visualTag: "" },
+  { term: "Ballast", def: "Crushed stones beneath the track that hold ties in place and allow drainage.", hasVisual: false, visualTag: "" },
+  { term: "Standard Gauge", def: "The most common spacing of rail tracks globally: 1,435 mm (4 ft 8 1⁄2 in).", hasVisual: false, visualTag: "" },
+  { term: "Deadman's Switch", def: "A safety device that automatically applies the brakes if the human operator becomes incapacitated.", hasVisual: false, visualTag: "" }
 ];
 
 const SIGNALS = [

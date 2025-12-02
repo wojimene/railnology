@@ -12,7 +12,8 @@ import {
 
 // 🅰️ OPTION A: REAL CLERK (Uncomment for Local/Production):
  import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
+  http://googleusercontent.com/immersive_entry_chip/1
+  
 // ==========================================
 // 2. CONFIGURATION SETUP
 // ==========================================
