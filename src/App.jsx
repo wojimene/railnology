@@ -186,6 +186,7 @@ const AdminView = ({ refreshData, isOffline }) => {
                   value={termForm.visualTag}
                   onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})}
                 />
+                {/* Preview Thumbnail */}
                 {termForm.visualTag && (
                   <div className="ml-2 w-8 h-8 rounded border border-slate-200 overflow-hidden flex-shrink-0">
                     <img src={termForm.visualTag} alt="Preview" className="w-full h-full object-cover" />
@@ -404,7 +405,7 @@ const MainContent = () => {
   useEffect(() => { fetchData(); }, []);
 
   // --- ADMIN CHECK LOGIC ---
-  const ADMIN_EMAIL = "winstonjimenez@gmail.com"; 
+  const ADMIN_EMAIL = "wayne@railnology.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
