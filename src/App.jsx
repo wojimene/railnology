@@ -14,7 +14,7 @@ import {
  import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
-// 2. CONFIGURATION SETUP
+// 2. CONFIGURATION SETUP1
 // ==========================================
 
 // 🅰️ PRODUCTION (Uncomment for Vercel deployment):
