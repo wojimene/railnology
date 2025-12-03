@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video
 } from 'lucide-react';
 
 // ==========================================
@@ -121,7 +121,7 @@ const AdminView = ({ refreshData, isOffline }) => {
   const [mode, setMode] = useState('job'); 
   const [status, setStatus] = useState(null); 
   const [jobForm, setJobForm] = useState({ title: '', company: '', location: '', salary: '', category: 'Field' });
-  const [termForm, setTermForm] = useState({ term: '', def: '', hasVisual: false, visualTag: '' });
+  const [termForm, setTermForm] = useState({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
   
   const handleSubmit = async () => {
     if (isOffline) { alert("Cannot save in Offline Mode"); return; }
@@ -139,7 +139,7 @@ const AdminView = ({ refreshData, isOffline }) => {
       setStatus('success');
       refreshData();
       setJobForm({ title: '', company: '', location: '', salary: '', category: 'Field' });
-      setTermForm({ term: '', def: '', hasVisual: false, visualTag: '' });
+      setTermForm({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -186,13 +186,24 @@ const AdminView = ({ refreshData, isOffline }) => {
                   value={termForm.visualTag}
                   onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})}
                 />
-                {/* Preview Thumbnail */}
                 {termForm.visualTag && (
                   <div className="ml-2 w-8 h-8 rounded border border-slate-200 overflow-hidden flex-shrink-0">
                     <img src={termForm.visualTag} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
+            </div>
+
+             {/* VIDEO URL INPUT */}
+             <div className="mb-3">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">YouTube URL (Optional)</label>
+              <input 
+                type="text"
+                placeholder="https://youtube.com/watch?v=..."
+                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm"
+                value={termForm.videoUrl}
+                onChange={e => setTermForm({...termForm, videoUrl: e.target.value})}
+              />
             </div>
           </>
         )}
@@ -254,28 +265,64 @@ const LearnView = ({ glossary }) => {
   const [term, setTerm] = useState('');
   const filtered = useMemo(() => glossary.filter(g => (g.term || '').toLowerCase().includes(term.toLowerCase())), [term, glossary]);
   
-  // --- VISUAL CARD (Updated to render Images) ---
-  const VisualCard = ({ item }) => (
-    <div className="mt-3 bg-slate-50 rounded-lg border border-slate-200 p-3">
-      <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-        <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
+  // --- VISUAL CARD (Updated to render Images & Video) ---
+  const MediaCard = ({ item }) => {
+    // Extract YouTube Video ID
+    const getYoutubeId = (url) => {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url?.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const videoId = getYoutubeId(item.videoUrl);
+
+    return (
+      <div className="mt-3 bg-slate-50 rounded-lg border border-slate-200 p-3">
+        {/* Image Section */}
+        {item.hasVisual && (
+          <div className="mb-3">
+            <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+              <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
+            </div>
+            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
+              {item.visualTag && item.visualTag.startsWith('http') ? (
+                <img 
+                  src={item.visualTag} 
+                  alt={item.term} 
+                  className="w-full h-auto max-h-48 object-contain rounded"
+                  onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
+                />
+              ) : (
+                <div className="text-slate-400 text-xs italic mb-2 py-4">
+                  {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Video Section */}
+        {videoId && (
+          <div>
+             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+              <Video className="w-3 h-3 mr-1.5" /> Video Lesson
+            </div>
+            <div className="bg-black rounded-lg overflow-hidden aspect-video shadow-sm">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src={`https://www.youtube.com/embed/${videoId}`} 
+                title={item.term} 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
-         {item.visualTag && item.visualTag.startsWith('http') ? (
-           <img 
-             src={item.visualTag} 
-             alt={item.term} 
-             className="w-full h-auto max-h-48 object-contain rounded"
-             onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
-           />
-         ) : (
-           <div className="text-slate-400 text-xs italic mb-2 py-4">
-             {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
-           </div>
-         )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
@@ -286,7 +333,8 @@ const LearnView = ({ glossary }) => {
           <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-lg text-slate-900">{item.term}</h3>
             <p className="text-sm text-slate-600 mt-2">{item.def}</p>
-            {item.hasVisual && <VisualCard item={item} />}
+            {/* Render MediaCard if visual or video exists */}
+            {(item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
           </div>
         ))}
       </div>

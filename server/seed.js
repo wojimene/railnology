@@ -16,11 +16,13 @@ const JobSchema = new mongoose.Schema({
   tags: [String]
 });
 
+// ✅ Updated Schema: Added 'videoUrl' for YouTube links
 const GlossarySchema = new mongoose.Schema({
   term: String,
   def: String,
   hasVisual: Boolean,
-  visualTag: String 
+  visualTag: String,
+  videoUrl: String // New field for YouTube links
 });
 
 const SignalSchema = new mongoose.Schema({
@@ -44,42 +46,47 @@ const JOBS = [
   { title: "Project Engineer (Civil)", company: "Amtrak", location: "Philadelphia, PA", salary: "$105k - $135k", category: "Engineering", tags: ["Hybrid", "Northeast Corridor"] }
 ];
 
-// ✅ Verified Full URLs
+// ✅ Updated with Verified Image URLs and New YouTube Links
 const GLOSSARY = [
   { 
     term: "Pantograph", 
     def: "An apparatus mounted on the roof of an electric train to collect power through contact with an overhead catenary wire.", 
     hasVisual: true, 
-    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png" 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png",
+    videoUrl: "https://www.youtube.com/watch?v=AgmvqY6hU4E" // Pantograph in action
   },
   { 
     term: "Bogie (Truck)", 
     def: "A chassis or framework carrying wheels, attached to a vehicle, serving as a modular subassembly of wheels and axles.", 
     hasVisual: true, 
-    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Bogie_schema.svg/640px-Bogie_schema.svg.png" 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Baureihe_614_Drehgestell.jpg/640px-Baureihe_614_Drehgestell.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=45M24B9oVoI" // Bogie explanation
   },
   { 
     term: "Cant (Superelevation)", 
     def: "The difference in elevation between the two rails on a curve, designed to counteract centrifugal force.", 
     hasVisual: true, 
-    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cant_and_cant_deficiency.svg/640px-Cant_and_cant_deficiency.svg.png" 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cant_and_cant_deficiency.svg/640px-Cant_and_cant_deficiency.svg.png",
+    videoUrl: ""
   },
   { 
     term: "Semaphore Signal", 
     def: "A mechanical railway signal displaying information by the position of a moving arm (blade).", 
     hasVisual: true, 
-    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Gwr_lower_quadrant_signal_diagram.svg/320px-Gwr_lower_quadrant_signal_diagram.svg.png" 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Gwr_lower_quadrant_signal_diagram.svg/320px-Gwr_lower_quadrant_signal_diagram.svg.png",
+    videoUrl: "https://www.youtube.com/watch?v=U54F3H-gX64" // Semaphore signals
   },
   { 
     term: "Fishplate", 
     def: "A metal bar that is bolted to the ends of two rails to join them together in a track.", 
     hasVisual: true, 
-    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rail_joint_fishplate.jpg/640px-Rail_joint_fishplate.jpg" 
+    visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rail_joint_fishplate.jpg/640px-Rail_joint_fishplate.jpg",
+    videoUrl: ""
   },
-  { term: "Interlocking", def: "An arrangement of signal apparatus that prevents conflicting movements through an arrangement of tracks.", hasVisual: false, visualTag: "" },
-  { term: "Ballast", def: "Crushed stones beneath the track that hold ties in place and allow drainage.", hasVisual: false, visualTag: "" },
-  { term: "Standard Gauge", def: "The most common spacing of rail tracks globally: 1,435 mm (4 ft 8 1⁄2 in).", hasVisual: false, visualTag: "" },
-  { term: "Deadman's Switch", def: "A safety device that automatically applies the brakes if the human operator becomes incapacitated.", hasVisual: false, visualTag: "" }
+  { term: "Interlocking", def: "An arrangement of signal apparatus that prevents conflicting movements through an arrangement of tracks.", hasVisual: false, visualTag: "", videoUrl: "" },
+  { term: "Ballast", def: "Crushed stones beneath the track that hold ties in place and allow drainage.", hasVisual: false, visualTag: "", videoUrl: "" },
+  { term: "Standard Gauge", def: "The most common spacing of rail tracks globally: 1,435 mm (4 ft 8 1⁄2 in).", hasVisual: false, visualTag: "", videoUrl: "" },
+  { term: "Deadman's Switch", def: "A safety device that automatically applies the brakes if the human operator becomes incapacitated.", hasVisual: false, visualTag: "", videoUrl: "" }
 ];
 
 const SIGNALS = [
