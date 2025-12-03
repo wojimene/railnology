@@ -29,6 +29,22 @@ import {
 // PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
 const CLERK_KEY = "pk_test_bm92ZWwtc2t1bmstNjUuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
+// ==========================================
+// 2. CONFIGURATION SETUP
+// ==========================================
+
+// 🅰️ PRODUCTION (Uncomment for Vercel deployment):
+// This tells the code: "Look for a variable named VITE_API_URL in Vercel settings."
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// 🅱️ LOCAL/PREVIEW (Comment out for production):
+// const API_URL = "http://localhost:5000/api";
+
+
+// --- CLERK KEY ---
+// PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
+const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE";
+
 // --- Branding Constants ---
 const BRAND = {
   name: "Railnology",
@@ -43,7 +59,7 @@ const FALLBACK_JOBS = [
   { id: 2, title: "Track Inspector (Geometry)", company: "Canadian National", location: "Chicago, IL", salary: "$36/hr + Benefits", category: "Engineering", tags: ["Urgent", "Travel Required"] },
 ];
 const FALLBACK_GLOSSARY = [
-  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png" },
+  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
 ];
 const FALLBACK_SIGNALS = [
   { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
@@ -179,11 +195,11 @@ const AdminView = ({ refreshData, isOffline }) => {
             
             {/* IMAGE URL INPUT */}
             <div className="mb-3">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Image URL (Optional)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Image URL or Path (Optional)</label>
               <div className="flex items-center">
                 <input 
                   type="text"
-                  placeholder="https://example.com/image.png"
+                  placeholder="/diagrams/image.jpg"
                   className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm"
                   value={termForm.visualTag}
                   onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})}
@@ -268,15 +284,13 @@ const LearnView = ({ glossary }) => {
   const [term, setTerm] = useState('');
   const filtered = useMemo(() => glossary.filter(g => (g.term || '').toLowerCase().includes(term.toLowerCase())), [term, glossary]);
   
-  // --- VISUAL CARD (Updated to render Images & Video) ---
+  // --- VISUAL CARD (FIXED to allow relative paths) ---
   const MediaCard = ({ item }) => {
-    // Extract YouTube Video ID
     const getYoutubeId = (url) => {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
       const match = url?.match(regExp);
       return (match && match[2].length === 11) ? match[2] : null;
     };
-
     const videoId = getYoutubeId(item.videoUrl);
 
     return (
@@ -287,9 +301,9 @@ const LearnView = ({ glossary }) => {
             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
               <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
             </div>
-            {/* Added min-h-[150px] and bg-white to ensure it takes space even if loading */}
             <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
-              {item.visualTag && item.visualTag.startsWith('http') ? (
+              {/* ✅ Logic Update: Now checks if visualTag exists, NOT if it starts with http */}
+              {item.visualTag ? (
                 <img 
                   src={item.visualTag} 
                   alt={item.term} 
@@ -338,7 +352,6 @@ const LearnView = ({ glossary }) => {
           <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-lg text-slate-900">{item.term}</h3>
             <p className="text-sm text-slate-600 mt-2">{item.def}</p>
-            {/* Render MediaCard if visual or video exists */}
             {(item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
           </div>
         ))}
@@ -390,7 +403,6 @@ const MainContent = () => {
     setLoading(true);
     setIsOffline(false);
     try {
-      // ✅ FIXED: Increased timeout to 60 seconds (60000ms) for Render cold starts
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
       const [jobsRes, glossaryRes, signalsRes] = await Promise.race([
         Promise.all([fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`)]),
