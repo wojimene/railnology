@@ -29,22 +29,6 @@ import {
 // PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
 const CLERK_KEY = "pk_test_bm92ZWwtc2t1bmstNjUuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
-// ==========================================
-// 2. CONFIGURATION SETUP
-// ==========================================
-
-// 🅰️ PRODUCTION (Uncomment for Vercel deployment):
-// This tells the code: "Look for a variable named VITE_API_URL in Vercel settings."
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-// 🅱️ LOCAL/PREVIEW (Comment out for production):
-// const API_URL = "http://localhost:5000/api";
-
-
-// --- CLERK KEY ---
-// PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
-const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE";
-
 // --- Branding Constants ---
 const BRAND = {
   name: "Railnology",
