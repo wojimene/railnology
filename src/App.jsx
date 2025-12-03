@@ -13,8 +13,9 @@ import {
 // 🅰️ REAL CLERK (Uncomment this line for Local/Production use):
  import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
+
 // ==========================================
-// 2. CONFIGURATION SETUP1
+// 2. CONFIGURATION SETUP
 // ==========================================
 
 // 🅰️ PRODUCTION (Uncomment for Vercel deployment):
@@ -22,6 +23,7 @@ import {
 
 // 🅱️ LOCAL/PREVIEW (Active for now):
 //const API_URL = "http://localhost:5000/api";
+
 
 // --- CLERK KEY ---
 // PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
@@ -285,18 +287,20 @@ const LearnView = ({ glossary }) => {
             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
               <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
             </div>
-            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
+            {/* Added min-h-[150px] and bg-white to ensure it takes space even if loading */}
+            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
               {item.visualTag && item.visualTag.startsWith('http') ? (
                 <img 
                   src={item.visualTag} 
                   alt={item.term} 
                   className="w-full h-auto max-h-48 object-contain rounded"
-                  onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
+                  onError={(e) => { 
+                    e.target.onerror = null; 
+                    e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; 
+                  }}
                 />
               ) : (
-                <div className="text-slate-400 text-xs italic mb-2 py-4">
-                  {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
-                </div>
+                <div className="text-slate-400 text-xs italic py-4">No schematic available.</div>
               )}
             </div>
           </div>
@@ -386,7 +390,8 @@ const MainContent = () => {
     setLoading(true);
     setIsOffline(false);
     try {
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000));
+      // ✅ FIXED: Increased timeout to 60 seconds (60000ms) for Render cold starts
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
       const [jobsRes, glossaryRes, signalsRes] = await Promise.race([
         Promise.all([fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`)]),
         timeoutPromise
@@ -405,7 +410,7 @@ const MainContent = () => {
   useEffect(() => { fetchData(); }, []);
 
   // --- ADMIN CHECK LOGIC ---
-  const ADMIN_EMAIL = "wayne@railnology.com"; 
+  const ADMIN_EMAIL = "winstonjimenez@gmail.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
