@@ -11,12 +11,11 @@ app.use(express.json());
 
 // --- MONGODB CONNECTION ---
 const MONGO_URI = process.env.MONGO_URI || ''; 
-// PASTE YOUR MONGODB CONNECTION STRING HERE
-const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
+// PASTE LOCAL STRING HERE IF NEEDED FOR TESTING:
+const MONGO_URI = "mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0";
 
-if (!MONGO_URI) {
-  console.error("❌ Error: MONGO_URI is missing in server/server.js");
-  process.exit(1);
+if (!MONGO_URI && !process.env.MONGO_URI) {
+  console.error("❌ Error: MONGO_URI is missing.");
 }
 
 if (MONGO_URI) {
@@ -61,6 +60,17 @@ const Glossary = mongoose.model('Glossary', GlossarySchema);
 const Signal = mongoose.model('Signal', SignalSchema);
 
 // --- API ENDPOINTS ---
+
+// 🔍 DEBUG ENDPOINT: Visit /api/debug to see connection details
+app.get('/api/debug', (req, res) => {
+  res.json({
+    status: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    host: mongoose.connection.host,
+    dbName: mongoose.connection.name, // <--- This is the source of truth
+    envPort: process.env.PORT,
+    mongoUriProvided: !!process.env.MONGO_URI
+  });
+});
 
 app.get('/api/jobs', async (req, res) => {
   try {
