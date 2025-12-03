@@ -11,7 +11,7 @@ app.use(express.json());
 
 // --- MONGODB CONNECTION ---
 // PASTE YOUR MONGODB CONNECTION STRING HERE
-const MONGO_URI = 'mongodb://admin1:gRRE0ua7R0GWidQmZr1hVIJmDksoZeycxo5Xt6n-zuGn3oFx@13eb9c56-ed25-4e5f-8879-7795281a53d9.nam5.firestore.goog:443/default?loadBalanced=true&tls=true&authMechanism=SCRAM-SHA-256&retryWrites=false'; 
+const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
 
 if (!MONGO_URI) {
   console.error("❌ Error: MONGO_URI is missing in server/server.js");
@@ -36,7 +36,8 @@ const GlossarySchema = new mongoose.Schema({
   term: String,
   def: String,
   hasVisual: Boolean,
-  visualTag: String
+  visualTag: String,
+  visualUrl: String
 });
 
 const SignalSchema = new mongoose.Schema({
