@@ -3,11 +3,11 @@ console.log("--- SCRIPT STARTING ---");
 import mongoose from 'mongoose';
 
 // --- CONFIGURATION ---
-// 🔴 PASTE YOUR MONGODB CONNECTION STRING HERE 🔴
+// 🔴 PASTE YOUR RENDER CONNECTION STRING HERE 🔴
 const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
 
 if (!MONGO_URI) {
-    console.error("❌ ERROR: MONGO_URI is missing. Please paste the string from Render/Atlas.");
+    console.error("❌ ERROR: MONGO_URI is missing.");
     process.exit(1);
 }
 
@@ -16,7 +16,7 @@ const GlossarySchema = new mongoose.Schema({
   term: String,
   def: String,
   hasVisual: Boolean,
-  visualTag: String,
+  visualTag: String, // Will now store paths like "/diagrams/pantograph.gif"
   videoUrl: String 
 });
 const Glossary = mongoose.model('Glossary', GlossarySchema);
@@ -26,58 +26,63 @@ const SignalSchema = new mongoose.Schema({ id: String, name: String, rule: Strin
 const Job = mongoose.model('Job', JobSchema);
 const Signal = mongoose.model('Signal', SignalSchema);
 
-// --- DATA (Stable Special:FilePath Links) ---
+// --- NEW SELF-HOSTED DATA ---
 const GLOSSARY = [
   { 
     term: "Pantograph", 
     def: "An apparatus mounted on the roof of an electric train to collect power.", 
     hasVisual: true, 
-    // Using standard Wikimedia redirect link which is more stable than direct /thumb/ links
-    visualTag: "https://commons.wikimedia.org/wiki/Special:FilePath/Pantograph_Animation.gif", 
+    visualTag: "/diagrams/pantograph.gif", // ✅ Points to public/diagrams/pantograph.gif
     videoUrl: "https://www.youtube.com/watch?v=AgmvqY6hU4E"
   },
   { 
     term: "Bogie (Truck)", 
     def: "A chassis or framework carrying wheels attached to a vehicle.", 
     hasVisual: true, 
-    visualTag: "https://commons.wikimedia.org/wiki/Special:FilePath/Bogie_Y32.jpg",
+    visualTag: "/diagrams/bogie.jpg", // ✅ Points to public/diagrams/bogie.jpg
     videoUrl: "https://www.youtube.com/watch?v=45M24B9oVoI"
   },
   { 
     term: "Cant (Superelevation)", 
     def: "The difference in elevation between the two rails on a curve.", 
     hasVisual: true, 
-    visualTag: "https://commons.wikimedia.org/wiki/Special:FilePath/Rail_superelevation.svg",
+    visualTag: "/diagrams/cant.png", // ✅ Points to public/diagrams/cant.png
+    videoUrl: "" 
+  },
+  { 
+    term: "Semaphore Signal", 
+    def: "A mechanical railway signal displaying information by position.", 
+    hasVisual: true, 
+    visualTag: "/diagrams/semaphore.jpg", // ✅ Points to public/diagrams/semaphore.jpg
+    videoUrl: "https://www.youtube.com/watch?v=U54F3H-gX64" 
+  },
+  { 
+    term: "Fishplate", 
+    def: "A metal bar bolted to the ends of two rails to join them.", 
+    hasVisual: true, 
+    visualTag: "/diagrams/fishplate.jpg", // ✅ Points to public/diagrams/fishplate.jpg
     videoUrl: "" 
   }
 ];
 
-// Placeholder data for others...
+// Placeholder Data
 const JOBS = [{ title: "Senior Locomotive Engineer", company: "BNSF Railway", location: "Fort Worth, TX", salary: "$95k - $125k", category: "Field", tags: ["Sign-on Bonus", "Union"] }];
 const SIGNALS = [{ id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' }];
 
 // --- RUN LOGIC ---
 const run = async () => {
   try {
-    console.log("...Connecting to MongoDB...");
-    
-    // ⚡ Force connection to the 'railnology' database
     await mongoose.connect(MONGO_URI, { dbName: 'railnology' });
-    
-    console.log(`✅ Connected to Host: ${mongoose.connection.host}`);
-    console.log(`✅ Database Name: ${mongoose.connection.name}`); 
+    console.log(`✅ Connected to: ${mongoose.connection.name}`);
 
-    console.log('...Wiping old data...');
     await Glossary.deleteMany({});
-    await Job.deleteMany({});
-    await Signal.deleteMany({});
-
-    console.log('...Injecting Stable Image URLs...');
     await Glossary.insertMany(GLOSSARY);
+    await Job.deleteMany({});
     await Job.insertMany(JOBS);
+    await Signal.deleteMany({});
     await Signal.insertMany(SIGNALS);
 
-    console.log("🎉 SUCCESS! Production Database Updated.");
+    console.log("🎉 SUCCESS! Database updated to use Self-Hosted Assets.");
     process.exit();
   } catch (err) {
     console.error("❌ ERROR:", err);
