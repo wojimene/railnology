@@ -43,7 +43,7 @@ const FALLBACK_JOBS = [
   { id: 2, title: "Track Inspector (Geometry)", company: "Canadian National", location: "Chicago, IL", salary: "$36/hr + Benefits", category: "Engineering", tags: ["Urgent", "Travel Required"] },
 ];
 const FALLBACK_GLOSSARY = [
-  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
+  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Pantograph_schema.svg/640px-Pantograph_schema.svg.png" },
 ];
 const FALLBACK_SIGNALS = [
   { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
@@ -179,11 +179,11 @@ const AdminView = ({ refreshData, isOffline }) => {
             
             {/* IMAGE URL INPUT */}
             <div className="mb-3">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Image URL or Path (Optional)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Image URL (Optional)</label>
               <div className="flex items-center">
                 <input 
                   type="text"
-                  placeholder="/diagrams/image.jpg"
+                  placeholder="https://example.com/image.png"
                   className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm"
                   value={termForm.visualTag}
                   onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})}
@@ -268,13 +268,15 @@ const LearnView = ({ glossary }) => {
   const [term, setTerm] = useState('');
   const filtered = useMemo(() => glossary.filter(g => (g.term || '').toLowerCase().includes(term.toLowerCase())), [term, glossary]);
   
-  // --- VISUAL CARD (FIXED to allow relative paths) ---
+  // --- VISUAL CARD (Updated to render Images & Video) ---
   const MediaCard = ({ item }) => {
+    // Extract YouTube Video ID
     const getYoutubeId = (url) => {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
       const match = url?.match(regExp);
       return (match && match[2].length === 11) ? match[2] : null;
     };
+
     const videoId = getYoutubeId(item.videoUrl);
 
     return (
@@ -285,20 +287,18 @@ const LearnView = ({ glossary }) => {
             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
               <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
             </div>
-            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
-              {/* ✅ Logic Update: Now checks if visualTag exists, NOT if it starts with http */}
-              {item.visualTag ? (
+            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
+              {item.visualTag && item.visualTag.startsWith('http') ? (
                 <img 
                   src={item.visualTag} 
                   alt={item.term} 
                   className="w-full h-auto max-h-48 object-contain rounded"
-                  onError={(e) => { 
-                    e.target.onerror = null; 
-                    e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; 
-                  }}
+                  onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
                 />
               ) : (
-                <div className="text-slate-400 text-xs italic py-4">No schematic available.</div>
+                <div className="text-slate-400 text-xs italic mb-2 py-4">
+                  {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
+                </div>
               )}
             </div>
           </div>
@@ -336,6 +336,7 @@ const LearnView = ({ glossary }) => {
           <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-lg text-slate-900">{item.term}</h3>
             <p className="text-sm text-slate-600 mt-2">{item.def}</p>
+            {/* Render MediaCard if visual or video exists */}
             {(item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
           </div>
         ))}
@@ -387,7 +388,7 @@ const MainContent = () => {
     setLoading(true);
     setIsOffline(false);
     try {
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000));
       const [jobsRes, glossaryRes, signalsRes] = await Promise.race([
         Promise.all([fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`)]),
         timeoutPromise
