@@ -10,11 +10,10 @@ app.use(cors());
 app.use(express.json());
 
 // --- MONGODB CONNECTION ---
-const MONGO_URI = process.env.MONGO_URI || ''; 
-// PASTE LOCAL STRING HERE IF NEEDED FOR TESTING:
-const MONGO_URI = "mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0";
+// Use the environment variable (Production) OR the local string (Development)
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0"'
 
-if (!MONGO_URI && !process.env.MONGO_URI) {
+if (!MONGO_URI) {
   console.error("❌ Error: MONGO_URI is missing.");
 }
 
