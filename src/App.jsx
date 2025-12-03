@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
@@ -10,19 +10,16 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (Uncomment this line for Local/Production use):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
+// ✅ REAL CLERK (Active for Production):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION SETUP
 // ==========================================
 
-// 🅰️ PRODUCTION (Uncomment for Vercel deployment):
- const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-// 🅱️ LOCAL/PREVIEW (Active for now):
-//const API_URL = "http://localhost:5000/api";
+// ✅ PRODUCTION (Active):
+// Checks for VITE_API_URL from Vercel settings. Falls back to localhost if not found.
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 
 // --- CLERK KEY ---
@@ -287,18 +284,21 @@ const LearnView = ({ glossary }) => {
             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
               <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
             </div>
-            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden">
-              {item.visualTag && item.visualTag.startsWith('http') ? (
+            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
+              {/* ✅ Logic Update: Now checks if visualTag exists, NOT if it starts with http */}
+              {item.visualTag ? (
                 <img 
                   src={item.visualTag} 
                   alt={item.term} 
                   className="w-full h-auto max-h-48 object-contain rounded"
-                  onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x150?text=Image+Not+Found"; }}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { 
+                    e.target.onerror = null; 
+                    e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; 
+                  }}
                 />
               ) : (
-                <div className="text-slate-400 text-xs italic mb-2 py-4">
-                  {item.visualTag ? `Generating schematic for: ${item.visualTag}` : 'No schematic available.'}
-                </div>
+                <div className="text-slate-400 text-xs italic py-4">No schematic available.</div>
               )}
             </div>
           </div>
@@ -388,7 +388,8 @@ const MainContent = () => {
     setLoading(true);
     setIsOffline(false);
     try {
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000));
+      // Increased timeout to 60 seconds (60000ms) for Render cold starts
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
       const [jobsRes, glossaryRes, signalsRes] = await Promise.race([
         Promise.all([fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`)]),
         timeoutPromise
