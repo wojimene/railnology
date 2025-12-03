@@ -23,7 +23,6 @@ import {
 // 🅱️ LOCAL/PREVIEW (Active for now):
 //const API_URL = "http://localhost:5000/api";
 
-
 // --- CLERK KEY ---
 // PASTE YOUR PUBLISHABLE KEY HERE (from dashboard.clerk.com)
 const CLERK_KEY = "pk_test_bm92ZWwtc2t1bmstNjUuY2xlcmsuYWNjb3VudHMuZGV2JA";
@@ -357,7 +356,7 @@ const MainContent = () => {
   useEffect(() => { fetchData(); }, []);
 
   // --- ADMIN CHECK LOGIC ---
-  const ADMIN_EMAIL = "wayne@railnology.com"; 
+  const ADMIN_EMAIL = "winstonjimenez@gmail.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
