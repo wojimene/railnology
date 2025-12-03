@@ -1,13 +1,13 @@
-console.log("--- SCRIPT STARTING ---");
+console.log("--- PRODUCTION SEEDER STARTING ---");
 
 import mongoose from 'mongoose';
 
 // --- CONFIGURATION ---
-// 🔴 PASTE YOUR MONGODB CONNECTION STRING HERE 🔴
+// 🔴 PASTE YOUR RENDER CONNECTION STRING HERE 🔴
 const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
 
 if (!MONGO_URI) {
-    console.error("❌ ERROR: MONGO_URI is missing. Please paste the string from Render/Atlas.");
+    console.error("❌ ERROR: MONGO_URI is missing. Please paste the string from Render.");
     process.exit(1);
 }
 

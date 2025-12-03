@@ -3,14 +3,13 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors()); // Allows your React app to talk to this server
 app.use(express.json());
 
 // --- MONGODB CONNECTION ---
-const MONGO_URI = process.env.MONGO_URI || ''; 
 // PASTE YOUR MONGODB CONNECTION STRING HERE
 const MONGO_URI = 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0'; 
 
@@ -19,19 +18,11 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-if (MONGO_URI) {
-    // ⚡ THE FIX: We explicitly add { dbName: 'railnology' } here.
-    // This ensures the app reads from the same place the seeder wrote to.
-    mongoose.connect(MONGO_URI, { dbName: 'railnology' })
-    .then(() => {
-        console.log('✅ Connected to MongoDB Enterprise');
-        console.log(`   -> Host: ${mongoose.connection.host}`);
-        console.log(`   -> Database: ${mongoose.connection.name}`); // Verify this says 'railnology'
-    })
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
-}
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ Connected to MongoDB Enterprise'))
+  .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// --- SCHEMAS (Must match Seed) ---
+// --- SCHEMAS (Data Models) ---
 const JobSchema = new mongoose.Schema({
   title: String,
   company: String,
@@ -46,14 +37,14 @@ const GlossarySchema = new mongoose.Schema({
   def: String,
   hasVisual: Boolean,
   visualTag: String,
-  videoUrl: String 
+  visualUrl: String
 });
 
 const SignalSchema = new mongoose.Schema({
   id: String,
   name: String,
   rule: String,
-  colors: [String]
+  colors: [String] // Array like ['G', 'R', 'R']
 });
 
 const Job = mongoose.model('Job', JobSchema);
@@ -62,24 +53,29 @@ const Signal = mongoose.model('Signal', SignalSchema);
 
 // --- API ENDPOINTS ---
 
+// --- READ (GET) ---
+
+// Get All Jobs
 app.get('/api/jobs', async (req, res) => {
   try {
-    const jobs = await Job.find().sort({ _id: -1 });
+    const jobs = await Job.find().sort({ _id: -1 }); // Newest first
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Get Glossary
 app.get('/api/glossary', async (req, res) => {
   try {
-    const terms = await Glossary.find().sort({ term: 1 });
+    const terms = await Glossary.find().sort({ term: 1 }); // Alphabetical
     res.json(terms);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Get Signals
 app.get('/api/signals', async (req, res) => {
   try {
     const signals = await Signal.find();
@@ -89,7 +85,9 @@ app.get('/api/signals', async (req, res) => {
   }
 });
 
-// Write Endpoints (Admin)
+// --- WRITE (POST) - FOR ADMIN PANEL ---
+
+// Create Job
 app.post('/api/jobs', async (req, res) => {
   try {
     const newJob = new Job(req.body);
@@ -100,6 +98,7 @@ app.post('/api/jobs', async (req, res) => {
   }
 });
 
+// Create Glossary Term
 app.post('/api/glossary', async (req, res) => {
   try {
     const newTerm = new Glossary(req.body);
@@ -110,6 +109,18 @@ app.post('/api/glossary', async (req, res) => {
   }
 });
 
+// Create Signal
+app.post('/api/signals', async (req, res) => {
+  try {
+    const newSignal = new Signal(req.body);
+    await newSignal.save();
+    res.status(201).json(newSignal);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Start Server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
