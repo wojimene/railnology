@@ -1,6 +1,15 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// --- CONFIGURATION ---
+// Load environment variables from .env file (for Local Development)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,26 +19,26 @@ app.use(cors());
 app.use(express.json());
 
 // --- MONGODB CONNECTION ---
-// Use the environment variable (Production) OR the local string (Development)
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://wsg_db_user:dRXAM6L3KjaYAdKE@cluster0.dz1naih.mongodb.net/?appName=Cluster0"'
+// ✅ SECURE: Uses process.env.MONGO_URI (Works on Render & Local with .env)
+const MONGO_URI = process.env.MONGO_URI; 
 
 if (!MONGO_URI) {
-  console.error("❌ Error: MONGO_URI is missing.");
+  console.error("❌ Error: MONGO_URI is missing. Check your .env file or Render Environment Variables.");
+  // We don't exit here to allow the build to pass, but the app won't connect.
 }
 
 if (MONGO_URI) {
-    // ⚡ THE FIX: We explicitly add { dbName: 'railnology' } here.
-    // This ensures the app reads from the same place the seeder wrote to.
+    // ⚡ Force connection to 'railnology' database
     mongoose.connect(MONGO_URI, { dbName: 'railnology' })
     .then(() => {
         console.log('✅ Connected to MongoDB Enterprise');
         console.log(`   -> Host: ${mongoose.connection.host}`);
-        console.log(`   -> Database: ${mongoose.connection.name}`); // Verify this says 'railnology'
+        console.log(`   -> Database: ${mongoose.connection.name}`); 
     })
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 }
 
-// --- SCHEMAS (Must match Seed) ---
+// --- SCHEMAS ---
 const JobSchema = new mongoose.Schema({
   title: String,
   company: String,
@@ -60,12 +69,12 @@ const Signal = mongoose.model('Signal', SignalSchema);
 
 // --- API ENDPOINTS ---
 
-// 🔍 DEBUG ENDPOINT: Visit /api/debug to see connection details
+// Debug Route
 app.get('/api/debug', (req, res) => {
   res.json({
     status: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
     host: mongoose.connection.host,
-    dbName: mongoose.connection.name, // <--- This is the source of truth
+    dbName: mongoose.connection.name,
     envPort: process.env.PORT,
     mongoUriProvided: !!process.env.MONGO_URI
   });
