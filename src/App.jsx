@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard
 } from 'lucide-react';
 
 // ==========================================
@@ -11,13 +11,37 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
+// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
+const MockAuthContext = createContext(null);
+const ClerkProvider = ({ children }) => {
+  const [user, setUser] = useState(null); 
+  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
+};
+const useUser = () => {
+  const { user } = useContext(MockAuthContext);
+  return { user, isLoaded: true, isSignedIn: !!user };
+};
+const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
+const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
+const SignInButton = ({ children }) => {
+  const { setUser } = useContext(MockAuthContext);
+  // Simulates logging in as the Admin for the preview
+  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" }, fullName: "Wayne Admin", imageUrl: "https://i.pravatar.cc/150?img=11" }) });
+};
+const UserButton = () => {
+  const { setUser } = useContext(MockAuthContext);
+  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
+};
+// ==========================================
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION CONFIG (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
 
 const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
@@ -131,7 +155,98 @@ const PaywallModal = ({ onClose }) => {
   );
 };
 
-// --- PROFILE VIEW (Startup 2.0 Feature) ---
+// --- COMPANY DASHBOARD (B2B Feature) ---
+const CompanyView = ({ user, mongoUser, refreshData }) => {
+  const [jobs, setJobs] = useState([]);
+  const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
+  const [status, setStatus] = useState(null);
+
+  useEffect(() => {
+    if (mongoUser?.companyName) {
+       fetch(`${API_URL}/jobs`)
+         .then(res => res.json())
+         .then(data => {
+            const myJobs = data.filter(j => j.company === mongoUser.companyName);
+            setJobs(myJobs);
+         });
+    }
+  }, [mongoUser]);
+
+  const handlePostJob = async () => {
+    if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
+    setStatus('submitting');
+    try {
+      const res = await fetch(`${API_URL}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
+      });
+      if (res.ok) {
+        setStatus('success');
+        setForm({ title: '', location: '', salary: '', category: 'Field' });
+        refreshData(); // Refresh global data
+        const newJob = await res.json();
+        setJobs([newJob, ...jobs]);
+      } else {
+        setStatus('error');
+      }
+    } catch (e) { setStatus('error'); }
+  };
+
+  return (
+    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
+       <SectionTitle title="Company Dashboard" subtitle={`Manage listings for ${mongoUser?.companyName || 'Your Company'}`} />
+       
+       <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-center">
+             <div className="text-2xl font-bold text-indigo-600">{jobs.length}</div>
+             <div className="text-xs text-slate-500 font-bold uppercase">Active Listings</div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-center">
+             <div className="text-2xl font-bold text-emerald-600">0</div>
+             <div className="text-xs text-slate-500 font-bold uppercase">Applicants</div>
+          </div>
+       </div>
+
+       <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+          <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
+            <PlusCircle className="w-4 h-4 mr-2 text-amber-500" /> Post a New Job
+          </h3>
+          <div className="space-y-3">
+             <input placeholder="Job Title" className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+             <div className="flex gap-2">
+                <input placeholder="Location" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
+                <input placeholder="Salary" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} />
+             </div>
+             <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                <option>Field</option>
+                <option>Engineering</option>
+                <option>Management</option>
+                <option>Office</option>
+             </select>
+             <button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Post Job</button>
+             {status === 'success' && <p className="text-emerald-600 text-xs font-bold mt-2 text-center">Job Posted Successfully!</p>}
+          </div>
+       </div>
+
+       <h3 className="font-bold text-slate-800 text-sm mb-3">Your Active Listings</h3>
+       <div className="space-y-2">
+          {jobs.map(job => (
+             <div key={job._id || Math.random()} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-center">
+                <div>
+                   <div className="font-bold text-slate-700 text-sm">{job.title}</div>
+                   <div className="text-xs text-slate-400">{job.location} • {job.salary}</div>
+                </div>
+                <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded border border-emerald-100">Active</div>
+             </div>
+          ))}
+          {jobs.length === 0 && <div className="text-center text-slate-400 text-xs py-4 italic border-2 border-dashed border-slate-100 rounded-lg">No active jobs. Post one above!</div>}
+       </div>
+    </div>
+  );
+};
+
+// --- PROFILE VIEW ---
 const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -149,7 +264,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
       });
       if (res.ok) {
         setIsEditing(false);
-        refreshProfile(); // Refresh parent state
+        refreshProfile(); 
       }
     } catch (err) { console.error("Failed to update profile", err); }
   };
@@ -545,17 +660,31 @@ const MainContent = () => {
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           {activeTab === 'home' && isSuperAdmin && <AdminView refreshData={fetchData} isOffline={false} />}
           
+          {/* Company View: Only show if user role is company */}
+          {activeTab === 'company' && mongoUser?.role === 'company' ? (
+             <CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} />
+          ) : null}
+          
           {/* Profile Tab */}
           {activeTab === 'profile' && isSignedIn ? (
-             <ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => { /* Refetch logic */ }} />
+             <ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => { 
+               // Refresh logic: refetch the specific user to update state
+                if (isSignedIn && user) {
+                  fetch(`${API_URL}/users/${user.id}`)
+                  .then(res => res.json()).then(userData => setMongoUser(userData)).catch(err => console.error("User Refresh Error:", err));
+                }
+             }} />
           ) : (
-            loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
-              <>
-                {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
-                {activeTab === 'learn' && <LibraryView data={data} />}
-                {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
-                {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
-              </>
+             // Standard Tab Views
+             activeTab !== 'company' && activeTab !== 'profile' && (
+              loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
+                <>
+                  {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
+                  {activeTab === 'learn' && <LibraryView data={data} />}
+                  {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
+                  {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
+                </>
+              )
             )
           )}
         </div>
@@ -565,6 +694,10 @@ const MainContent = () => {
             <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
             <TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />
             <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
+            {/* Dynamic Dashboard Button for Companies */}
+            {mongoUser?.role === 'company' && (
+              <TabButton active={activeTab} id="company" icon={LayoutDashboard} label="Dash" onClick={setActiveTab} />
+            )}
           </div>
         </div>
       </div>
