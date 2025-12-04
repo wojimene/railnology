@@ -11,51 +11,18 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION):
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
-const MockAuthContext = createContext(null);
-const ClerkProvider = ({ children }) => {
-  const [user, setUser] = useState(null); 
-  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
-};
-const useUser = () => {
-  const { user } = useContext(MockAuthContext);
-  return { user, isLoaded: true, isSignedIn: !!user };
-};
-const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
-const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
-const SignInButton = ({ children }) => {
-  const { setUser } = useContext(MockAuthContext);
-  // Simulates logging in as the Admin for the preview
-  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" } }) });
-};
-const UserButton = () => {
-  const { setUser } = useContext(MockAuthContext);
-  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
-};
-// ==========================================
-
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
 // 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-/*
+
 const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-*/
-
-// 🅱️ PREVIEW / LOCAL FALLBACK (ACTIVE FOR NOW):
-// Use these hardcoded values only if .env variables fail
-const API_URL = "http://localhost:5000/api";
-const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE"; 
-const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_YOUR_LINK"; // Replace with real link
-const ADMIN_EMAIL = "wayne@railnology.com";
-
 
 // --- Branding Constants ---
 const BRAND = {
