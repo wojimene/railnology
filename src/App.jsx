@@ -10,7 +10,7 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
+// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
  import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
@@ -86,7 +86,13 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           <button onClick={onProfileClick} className="text-slate-300 hover:text-white mr-2"><UserCircle className="w-6 h-6" /></button>
+           {/* ✅ EXPLICIT PROFILE BUTTON */}
+           <button 
+             onClick={onProfileClick} 
+             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2"
+           >
+             <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
+           </button>
            <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
@@ -372,6 +378,7 @@ const AdminView = ({ refreshData, isOffline }) => {
 const LoadingScreen = () => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Connecting...</p></div>);
 const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
 
+// --- HOME VIEW ---
 const HomeView = ({ changeTab, jobs }) => (
   <div className="pb-20">
     <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
