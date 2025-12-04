@@ -10,19 +10,21 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ✅ REAL CLERK (PRODUCTION):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ PRODUCTION CONFIG:
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+// Safety Check
+if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -86,13 +88,7 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           {/* ✅ EXPLICIT PROFILE BUTTON */}
-           <button 
-             onClick={onProfileClick} 
-             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2"
-           >
-             <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
-           </button>
+           <button onClick={onProfileClick} className="text-slate-300 hover:text-white mr-2"><UserCircle className="w-6 h-6" /></button>
            <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
@@ -121,14 +117,18 @@ const PaywallModal = ({ onClose }) => {
           Get access to the **Signal Decoder**, automated compliance tools, and advanced data.
         </p>
         <div className="space-y-3">
-          <a 
-            href={STRIPE_PAYMENT_LINK} 
-            target="_blank" 
-            rel="noreferrer"
-            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
-          >
-            <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
-          </a>
+          {STRIPE_PAYMENT_LINK ? (
+            <a 
+              href={STRIPE_PAYMENT_LINK} 
+              target="_blank" 
+              rel="noreferrer"
+              className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
+            >
+              <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
+            </a>
+          ) : (
+            <div className="text-red-500 text-xs text-center font-bold p-2 bg-red-50 rounded">Error: Stripe Link Not Configured</div>
+          )}
           <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Restore Purchases</button>
         </div>
         <p className="text-[10px] text-center text-slate-300 mt-4">Secured by Stripe</p>
@@ -378,6 +378,7 @@ const AdminView = ({ refreshData, isOffline }) => {
 const LoadingScreen = () => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Connecting...</p></div>);
 const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
 
+// --- HOME VIEW ---
 const HomeView = ({ changeTab, jobs }) => (
   <div className="pb-20">
     <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
@@ -428,7 +429,7 @@ const LibraryView = ({ data }) => {
     }),
   [term, activeData]);
 
-  // Media Card Logic (Reused for Glossary)
+  // Media Card Logic
   const MediaCard = ({ item }) => {
     const getYoutubeId = (url) => {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
