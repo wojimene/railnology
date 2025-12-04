@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield
 } from 'lucide-react';
 
 // ==========================================
@@ -11,19 +11,50 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
+// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
+const MockAuthContext = createContext(null);
+const ClerkProvider = ({ children }) => {
+  const [user, setUser] = useState(null); 
+  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
+};
+const useUser = () => {
+  const { user } = useContext(MockAuthContext);
+  return { user, isLoaded: true, isSignedIn: !!user };
+};
+const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
+const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
+const SignInButton = ({ children }) => {
+  const { setUser } = useContext(MockAuthContext);
+  // Simulates logging in as the Admin for the preview
+  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" } }) });
+};
+const UserButton = () => {
+  const { setUser } = useContext(MockAuthContext);
+  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
+};
+// ==========================================
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// Load from Environment Variables (Vercel / .env)
-const API_URL = import.meta.env.VITE_API_URL || import.meta.env.API_URL;
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+/*
+const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
-const STRIPE_KEY = import.meta.env.VITE_STRIPE_KEY;
+const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+*/
 
-if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY in environment variables");
+// 🅱️ PREVIEW / LOCAL FALLBACK (ACTIVE FOR NOW):
+// Use these hardcoded values only if .env variables fail
+const API_URL = "http://localhost:5000/api";
+const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE"; 
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_YOUR_LINK"; // Replace with real link
+const ADMIN_EMAIL = "wayne@railnology.com";
 
 
 // --- Branding Constants ---
@@ -41,6 +72,7 @@ const FALLBACK_JOBS = [
 const FALLBACK_GLOSSARY = [
   { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
 ];
+const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
 const FALLBACK_SIGNALS = [
   { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
 ];
@@ -103,13 +135,6 @@ const SectionTitle = ({ title, subtitle }) => (
 
 // --- Paywall Component ---
 const PaywallModal = ({ onClose }) => {
-  const handleCheckout = () => {
-    // In a real app, this would verify with backend first.
-    // For MVP, we redirect to a Stripe Payment Link (You create this in Stripe Dashboard)
-    // Example Link: https://buy.stripe.com/test_...
-    alert("Redirecting to Stripe Checkout...\n(You need to paste your Payment Link in the code)");
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
@@ -119,12 +144,17 @@ const PaywallModal = ({ onClose }) => {
         </div>
         <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Unlock Pro Tools</h3>
         <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
-          Get access to the **Signal Decoder**, Axle Calculator, and offline diagrams.
+          Get access to the **Signal Decoder**, automated compliance tools, and advanced data.
         </p>
         <div className="space-y-3">
-          <button onClick={handleCheckout} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center">
+          <a 
+            href={STRIPE_PAYMENT_LINK} 
+            target="_blank" 
+            rel="noreferrer"
+            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
+          >
             <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
-          </button>
+          </a>
           <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Restore Purchases</button>
         </div>
         <p className="text-[10px] text-center text-slate-300 mt-4">Secured by Stripe</p>
@@ -133,99 +163,92 @@ const PaywallModal = ({ onClose }) => {
   );
 };
 
-// --- Admin View ---
-const AdminInput = ({ label, value, onChange, placeholder, type="text" }) => (
-  <div className="mb-3"><label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</label><input type={type} value={value} onChange={onChange} placeholder={placeholder} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" /></div>
-);
-
-const AdminView = ({ refreshData, isOffline }) => {
-  const [mode, setMode] = useState('job'); 
-  const [status, setStatus] = useState(null); 
-  const [jobForm, setJobForm] = useState({ title: '', company: '', location: '', salary: '', category: 'Field' });
-  const [termForm, setTermForm] = useState({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
-  
-  const handleSubmit = async () => {
-    if (isOffline) { alert("Cannot save in Offline Mode"); return; }
-    setStatus(null);
-    let endpoint = mode === 'job' ? '/jobs' : '/glossary';
-    let body = mode === 'job' ? { ...jobForm, tags: ["New"] } : termForm;
-
-    try {
-      const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error("Failed to save");
-      setStatus('success'); refreshData();
-      setJobForm({ title: '', company: '', location: '', salary: '', category: 'Field' });
-      setTermForm({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
-    } catch (err) { console.error(err); setStatus('error'); }
-  };
-
-  return (
-    <div className="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
-      <div className="flex items-center space-x-2 mb-4"><Lock className="w-4 h-4 text-slate-900" /><h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Admin Dashboard</h3></div>
-      <div className="flex bg-white p-1 rounded-lg border border-slate-200 mb-4">
-        {['job', 'term'].map(m => (<button key={m} onClick={() => setMode(m)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-md capitalize transition ${mode === m ? 'bg-slate-900 text-white' : 'text-slate-500'}`}>Add {m}</button>))}
-      </div>
-      <div className="bg-white p-4 rounded-lg border border-slate-200">
-        {mode === 'job' && ( <> <AdminInput label="Job Title" value={jobForm.title} onChange={e => setJobForm({...jobForm, title: e.target.value})} /> <AdminInput label="Company" value={jobForm.company} onChange={e => setJobForm({...jobForm, company: e.target.value})} /> <AdminInput label="Location" value={jobForm.location} onChange={e => setJobForm({...jobForm, location: e.target.value})} /> <AdminInput label="Salary" value={jobForm.salary} onChange={e => setJobForm({...jobForm, salary: e.target.value})} /> </> )}
-        {mode === 'term' && ( <> <AdminInput label="Term" value={termForm.term} onChange={e => setTermForm({...termForm, term: e.target.value})} /> <textarea className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm h-20 mb-3" placeholder="Definition..." value={termForm.def} onChange={e => setTermForm({...termForm, def: e.target.value})}></textarea> <AdminInput label="Image Path" value={termForm.visualTag} onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})} placeholder="/diagrams/image.jpg" /> <AdminInput label="Video URL" value={termForm.videoUrl} onChange={e => setTermForm({...termForm, videoUrl: e.target.value})} /> </> )}
-        <button onClick={handleSubmit} disabled={isOffline} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Save Data</button>
-        {status === 'success' && <p className="text-emerald-600 text-xs font-bold mt-2 text-center">Saved!</p>}
-      </div>
-    </div>
-  );
-};
-
-const LoadingScreen = () => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Connecting...</p></div>);
-const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
-
-const HomeView = ({ changeTab, jobs }) => (
-  <div className="pb-20">
-    <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-      <div className="relative z-10">
-        <span className="inline-block px-2 py-1 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded mb-3 border border-amber-500/20">DAILY BRIEFING</span>
-        <h2 className="text-2xl font-bold mb-2 leading-tight">Future of Freight</h2>
-        <p className="text-slate-400 text-sm mb-6 max-w-[90%] leading-relaxed">How autonomous rail cars are reshaping the supply chain in 2025.</p>
-      </div>
-    </div>
-    <div className="mt-8 px-4">
-      <div className="flex justify-between items-end mb-4">
-        <SectionTitle title="Recent Listings" subtitle="Top-tier opportunities." />
-        <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
-      </div>
-      <div className="space-y-3">
-        {jobs && jobs.length > 0 ? jobs.slice(0, 3).map((job) => (
-          <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between">
-            <div><h3 className="font-bold text-slate-800 text-sm">{job.title}</h3><p className="text-xs font-medium text-slate-500">{job.company}</p></div>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{job.salary ? job.salary.split(' ')[0] : 'DOE'}</span>
-          </div>
-        )) : <div className="text-center p-4 text-slate-400 text-xs italic">No jobs available.</div>}
-      </div>
-    </div>
+const LoadingScreen = () => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400">
+    <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" />
+    <p className="text-xs font-bold uppercase tracking-widest">Connecting...</p>
   </div>
 );
 
-const LearnView = ({ glossary }) => {
+const ErrorScreen = ({ msg }) => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center">
+    <WifiOff className="w-10 h-10 text-slate-300 mb-4" />
+    <p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p>
+    <p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p>
+  </div>
+);
+
+// --- EXPANDED LIBRARY VIEW (Startup 2.0 Foundation) ---
+const LibraryView = ({ data }) => {
+  const [activeSubTab, setActiveSubTab] = useState('glossary');
   const [term, setTerm] = useState('');
-  const filtered = useMemo(() => glossary.filter(g => (g.term || '').toLowerCase().includes(term.toLowerCase())), [term, glossary]);
+
+  // Sub-tabs configuration
+  const tabs = [
+    { id: 'glossary', label: 'Glossary', icon: BookOpen, data: data.glossary },
+    { id: 'standards', label: 'Standards', icon: Scale, data: data.standards },
+    { id: 'manuals', label: 'Manuals', icon: FileText, data: data.manuals },
+    { id: 'regulations', label: 'Regs', icon: Shield, data: data.regulations },
+    { id: 'mandates', label: 'Mandates', icon: ScrollText, data: data.mandates },
+  ];
+
+  const activeData = tabs.find(t => t.id === activeSubTab)?.data || [];
   
+  const filtered = useMemo(() => 
+    activeData.filter(item => {
+      const searchStr = (item.term || item.title || item.code || '').toLowerCase();
+      return searchStr.includes(term.toLowerCase());
+    }),
+  [term, activeData]);
+
+  // Media Card Logic (Reused for Glossary)
   const MediaCard = ({ item }) => {
-    const getYoutubeId = (url) => { const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/; const match = url?.match(regExp); return (match && match[2].length === 11) ? match[2] : null; };
+    const getYoutubeId = (url) => {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url?.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    };
+
     const videoId = getYoutubeId(item.videoUrl);
+
     return (
       <div className="mt-3 bg-slate-50 rounded-lg border border-slate-200 p-3">
         {item.hasVisual && (
           <div className="mb-3">
-            <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider"><Eye className="w-3 h-3 mr-1.5" /> Visual Reference</div>
+            <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+              <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
+            </div>
             <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
-              {item.visualTag ? (<img src={item.visualTag} alt={item.term} className="w-full h-auto max-h-48 object-contain rounded" onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; }} referrerPolicy="no-referrer" />) : (<div className="text-slate-400 text-xs italic py-4">No schematic available.</div>)}
+              {item.visualTag ? (
+                <img 
+                  src={item.visualTag} 
+                  alt={item.term} 
+                  className="w-full h-auto max-h-48 object-contain rounded"
+                  onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; }}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="text-slate-400 text-xs italic py-4">No schematic available.</div>
+              )}
             </div>
           </div>
         )}
         {videoId && (
           <div>
-             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider"><Video className="w-3 h-3 mr-1.5" /> Video Lesson</div>
-            <div className="bg-black rounded-lg overflow-hidden aspect-video shadow-sm"><iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={item.term} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe></div>
+             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+              <Video className="w-3 h-3 mr-1.5" /> Video Lesson
+            </div>
+            <div className="bg-black rounded-lg overflow-hidden aspect-video shadow-sm">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src={`https://www.youtube.com/embed/${videoId}`} 
+                title={item.term} 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
         )}
       </div>
@@ -234,81 +257,134 @@ const LearnView = ({ glossary }) => {
 
   return (
     <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-      <SectionTitle title="Visual Dictionary" subtitle="Technical definitions." />
-      <input type="text" placeholder="Search..." className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-4 py-3 mb-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={term} onChange={(e) => setTerm(e.target.value)} />
-      <div className="space-y-4">
-        {filtered.map((item, idx) => (
-          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-lg text-slate-900">{item.term}</h3>
-            <p className="text-sm text-slate-600 mt-2">{item.def}</p>
-            {(item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
-          </div>
+      <SectionTitle title="Industry Library" subtitle="The comprehensive knowledge base." />
+      
+      {/* Search Bar */}
+      <div className="relative mb-4">
+        <input type="text" placeholder="Search library..." className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={term} onChange={(e) => setTerm(e.target.value)} />
+        <Search className="w-5 h-5 text-slate-400 absolute left-3 top-3.5 opacity-0" />
+      </div>
+
+      {/* Sub-Navigation */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        {tabs.map(t => (
+          <button 
+            key={t.id} 
+            onClick={() => setActiveSubTab(t.id)}
+            className={`flex items-center px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition ${activeSubTab === t.id ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-500 border border-slate-200'}`}
+          >
+            <t.icon className="w-3 h-3 mr-1.5" /> {t.label}
+          </button>
         ))}
+      </div>
+
+      {/* Content List */}
+      <div className="space-y-3">
+        {filtered.length > 0 ? filtered.map((item, idx) => (
+          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex justify-between items-start mb-1">
+              <h3 className="font-bold text-sm text-slate-900">{item.term || item.title}</h3>
+              {item.code && <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-mono">{item.code}</span>}
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
+              {item.def || item.description || item.summary || "No description available."}
+            </p>
+            {/* Visuals for Glossary */}
+            {activeSubTab === 'glossary' && (item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
+            
+            {/* Metadata for others */}
+            {activeSubTab !== 'glossary' && (
+              <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-400">
+                {item.agency && <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{item.agency}</span>}
+                {item.version && <span>Ver: {item.version}</span>}
+                {item.deadline && <span className="text-red-400 font-bold">Deadline: {item.deadline}</span>}
+                {item.url && item.url !== '#' && <a href={item.url} target="_blank" rel="noreferrer" className="text-amber-600 font-bold hover:underline">View Source &rarr;</a>}
+              </div>
+            )}
+          </div>
+        )) : (
+          <div className="text-center p-8 text-slate-400 text-xs italic border-2 border-dashed border-slate-200 rounded-xl">
+            No entries found in {tabs.find(t => t.id === activeSubTab).label}.
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+// --- Other Views (Home, Jobs, Tools) ---
+const HomeView = ({ changeTab, jobs }) => (
+  <div className="pb-20">
+    <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl">
+      <h2 className="text-2xl font-bold mb-2">Railnology 2.0</h2>
+      <p className="text-slate-400 text-sm">The future of rail compliance.</p>
+    </div>
+    <div className="mt-8 px-4">
+      <SectionTitle title="Recent Listings" />
+      <div className="space-y-3">
+        {jobs.slice(0, 3).map((job, idx) => (
+          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <h3 className="font-bold text-sm text-slate-800">{job.title}</h3>
+            <p className="text-xs text-slate-500">{job.company}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const JobsView = ({ jobs }) => (
   <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
     <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
     <div className="space-y-3">
-      {jobs.map((job) => ( <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"> <div className="flex justify-between items-start"> <div><h3 className="font-bold text-slate-800">{job.title}</h3><p className="text-xs font-medium text-slate-500">{job.company}</p></div><div className="flex items-center text-xs text-slate-400 mt-2"><Globe className="w-3 h-3 mr-1" /> {job.location}</div></div></div> ))}
+      {jobs.map((job) => (
+        <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-bold text-slate-800">{job.title}</h3>
+              <p className="text-xs font-medium text-slate-500">{job.company}</p>
+            </div>
+            <div className="flex items-center text-xs text-slate-400 mt-2"><Globe className="w-3 h-3 mr-1" /> {job.location}</div>
+          </div>
+        </div>
+      ))}
     </div>
   </div>
 );
 
-// --- TOOLS VIEW (NOW LOCKED) ---
-const ToolsView = ({ signalAspects, isPro, onUnlock }) => {
-  // Mock Signal Tool State
-  const [signalState, setSignalState] = useState(['R', 'R', 'R']);
-  const LightButton = ({ color, isActive, onClick }) => (<button onClick={onClick} className={`w-10 h-10 rounded-full border-4 transition-all duration-300 ${isActive ? (color === 'G' ? 'bg-emerald-500 border-emerald-400' : color === 'Y' ? 'bg-amber-400 border-amber-300' : 'bg-red-600 border-red-500') : 'bg-slate-800 border-slate-700 opacity-40'}`} />);
-  const SignalHead = ({ position, selected, onChange }) => (<div className="flex flex-col items-center space-y-2 bg-slate-900 p-3 rounded-lg border border-slate-800 shadow-inner"><span className="text-[9px] text-slate-500 font-bold uppercase">{position}</span><LightButton color="G" isActive={selected === 'G'} onClick={() => onChange('G')} /><LightButton color="Y" isActive={selected === 'Y'} onClick={() => onChange('Y')} /><LightButton color="R" isActive={selected === 'R'} onClick={() => onChange('R')} /></div>);
-  const updateSignal = (i, c) => { const n = [...signalState]; n[i] = c; setSignalState(n); };
-
-  return (
-    <div className="pb-20 bg-slate-50 min-h-full px-4 pt-6">
-      <SectionTitle title="Engineer's Toolkit" subtitle="Field utilities." />
-      <div className="space-y-6">
-        
-        {/* LOCKED TOOL: SIGNAL DECODER */}
-        <div className="relative">
-          <div className={`bg-white p-5 rounded-xl shadow-sm border border-slate-200 transition-all ${!isPro ? 'blur-[2px] pointer-events-none select-none opacity-80' : ''}`}>
-             <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-2"><AlertTriangle className="w-5 h-5 text-amber-500" /><h3 className="font-bold text-slate-800">Signal Decoder</h3></div></div>
-             <div className="flex items-start gap-6"><div className="flex flex-col gap-2 bg-slate-800 p-2 rounded-xl shadow-lg border border-slate-700"><SignalHead position="Top" selected={signalState[0]} onChange={(c) => updateSignal(0, c)} /><SignalHead position="Mid" selected={signalState[1]} onChange={(c) => updateSignal(1, c)} /><SignalHead position="Bot" selected={signalState[2]} onChange={(c) => updateSignal(2, c)} /></div><div className="flex-1 pt-2"><div className="mb-4"><div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Aspect Name</div><div className="text-xl font-extrabold leading-tight text-slate-900">Restricted Proceed</div></div><div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Rule / Indication</div><div className="text-sm text-slate-600 leading-relaxed font-medium">Proceed at restricted speed.</div></div></div></div>
-          </div>
-          
-          {/* LOCK OVERLAY */}
-          {!isPro && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-              <div className="bg-slate-900/90 backdrop-blur-sm p-6 rounded-2xl text-center shadow-2xl border border-slate-700 transform scale-105">
-                <Lock className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-                <h3 className="text-white font-bold text-lg mb-1">Pro Feature</h3>
-                <p className="text-slate-400 text-xs mb-4">Upgrade to unlock decoder.</p>
-                <button onClick={onUnlock} className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs transition shadow-lg flex items-center mx-auto">
-                  <Unlock className="w-3 h-3 mr-2" /> Unlock Now
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-           <div className="flex items-center space-x-2 mb-4"><Calculator className="w-5 h-5 text-indigo-500" /><h3 className="font-bold text-slate-800">Velocity Converter</h3></div>
-           <p className="text-xs text-slate-400 italic">Free tool available to all users.</p>
-        </div>
-      </div>
+const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
+  <div className="pb-20 bg-slate-50 min-h-full px-4 pt-6">
+    <SectionTitle title="Engineer's Toolkit" subtitle="Field utilities." />
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-4">
+      <div className="flex items-center space-x-2 mb-4"><AlertTriangle className="w-5 h-5 text-amber-500" /><h3 className="font-bold text-slate-800">Signal Decoder</h3></div>
+      <p className="text-xs text-slate-500">Interactive signal mast visualization coming soon.</p>
     </div>
-  );
-};
+    
+    {/* LOCKED TOOL WITH PAYWALL */}
+    <div className="relative bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center space-x-2"><Wrench className="w-5 h-5 text-slate-800" /><h3 className="font-bold text-slate-800">Pro Compliance Calc</h3></div>
+        <Lock className="w-4 h-4 text-amber-600" />
+      </div>
+      <p className="text-xs text-slate-400 mb-3">Automated compliance checker.</p>
+      
+      {!isPro && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex items-center justify-center rounded-xl">
+          <button onClick={onUnlock} className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center transition transform hover:scale-105">
+            <Unlock className="w-3 h-3 mr-2" /> Unlock Pro
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 // --- MAIN APP COMPONENT ---
-
 const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
+  const [data, setData] = useState({ jobs: [], glossary: [], standards: [], manuals: [], regulations: [], mandates: [], signals: [] });
   const [isOffline, setIsOffline] = useState(false);
   
   // --- PAYWALL STATE ---
@@ -318,17 +394,42 @@ const MainContent = () => {
   const { user, isLoaded, isSignedIn } = useUser();
 
   const fetchData = async () => {
-    setLoading(true); setIsOffline(false);
+    setLoading(true);
+    setIsOffline(false);
     try {
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
-      const [jobsRes, glossaryRes, signalsRes] = await Promise.race([Promise.all([fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`)]), timeoutPromise]);
-      if (!jobsRes.ok) throw new Error('Failed to connect to API server.');
-      setData({ jobs: await jobsRes.json(), glossary: await glossaryRes.json(), signals: await signalsRes.json() });
-    } catch (err) { console.warn("API Unavailable"); setIsOffline(true); setData({ jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_SIGNALS }); } finally { setLoading(false); }
+      const results = await Promise.race([
+        Promise.all([
+          fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`),
+          fetch(`${API_URL}/standards`), fetch(`${API_URL}/manuals`), fetch(`${API_URL}/regulations`), fetch(`${API_URL}/mandates`)
+        ]),
+        timeoutPromise
+      ]);
+      
+      // Parse all results safely
+      const [jobs, glossary, signals, standards, manuals, regulations, mandates] = await Promise.all(results.map(r => r.json()));
+      
+      setData({ jobs, glossary, signals, standards, manuals, regulations, mandates });
+    } catch (err) {
+      console.warn("API Unavailable, switching to demo mode.");
+      setIsOffline(true);
+      setData({ 
+        jobs: FALLBACK_JOBS, 
+        glossary: FALLBACK_GLOSSARY, 
+        signals: FALLBACK_SIGNALS,
+        standards: FALLBACK_STANDARDS, 
+        manuals: [], regulations: [], mandates: [] 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
+  // Placeholder for Admin View (Use your existing full version locally)
+  const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel Placeholder (See local code)</div>;
+  
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
@@ -337,17 +438,21 @@ const MainContent = () => {
       
       <div className="w-full max-w-md h-full min-h-screen bg-slate-50 shadow-2xl relative flex flex-col">
         <Header isOffline={isOffline} isPro={isPro} />
+        
         <div className="flex-1 overflow-y-auto scrollbar-hide">
+          {/* SECURE ADMIN PANEL */}
           {activeTab === 'home' && isSuperAdmin && <AdminView refreshData={fetchData} isOffline={isOffline} />}
+
           {loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
             <>
               {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
-              {activeTab === 'learn' && <LearnView glossary={data.glossary} />}
+              {activeTab === 'learn' && <LibraryView data={data} />}
               {activeTab === 'tools' && <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
               {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
             </>
           )}
         </div>
+
         <div className="bg-white border-t border-slate-200 px-4 pb-safe sticky bottom-0 z-50">
           <div className="flex justify-between items-center h-16">
             <TabButton active={activeTab} id="home" icon={Train} label="Home" onClick={setActiveTab} />
