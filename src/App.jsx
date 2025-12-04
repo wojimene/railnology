@@ -11,8 +11,7 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
@@ -59,9 +58,8 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   </button>
 );
 
-// Change 'bg-slate-900' (or similar) to 'bg-purple-600'
 const Header = ({ isOffline, isPro, onProfileClick }) => (
-  <div className="bg-purple-600 text-white p-4 sticky top-0 z-50 shadow-md">
+  <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md`}>
     {isOffline && (
       <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-900 text-[10px] font-bold text-center py-0.5">
         OFFLINE / DEMO MODE
@@ -88,13 +86,7 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           {/* ✅ "My Profile" Button */}
-           <button 
-             onClick={onProfileClick} 
-             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2"
-           >
-             <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
-           </button>
+           <button onClick={onProfileClick} className="text-slate-300 hover:text-white mr-2"><UserCircle className="w-6 h-6" /></button>
            <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
