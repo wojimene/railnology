@@ -3,26 +3,28 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3
 } from 'lucide-react';
 
 // ==========================================
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ✅ REAL CLERK (Active for Production):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION CONFIG (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ PRODUCTION CONFIG:
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+// Safety Check
+if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -39,7 +41,6 @@ const FALLBACK_JOBS = [
 const FALLBACK_GLOSSARY = [
   { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
 ];
-const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
 const FALLBACK_SIGNALS = [
   { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
 ];
@@ -143,7 +144,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
          .then(res => res.json())
          .then(data => {
             // Filter for jobs owned by this company
-            // Note: Ideally backend filters this, but client-side works for MVP
             const myJobs = data.filter(j => j.company === mongoUser.companyName);
             setJobs(myJobs);
          });
@@ -233,6 +233,16 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
     jobTitle: mongoUser?.jobTitle || ''
   });
 
+  useEffect(() => {
+    if (mongoUser) {
+      setFormData({
+        role: mongoUser.role || 'individual',
+        companyName: mongoUser.companyName || '',
+        jobTitle: mongoUser.jobTitle || ''
+      });
+    }
+  }, [mongoUser]);
+
   const handleSave = async () => {
     try {
       const res = await fetch(`${API_URL}/users/${user.id}`, {
@@ -249,63 +259,78 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
 
   return (
     <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-       <div className="mb-5 mt-2"><h2 className="text-xl font-bold text-slate-900 tracking-tight">My Profile</h2></div>
+       <div className="flex justify-between items-end mb-6">
+         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">My Profile</h2>
+         {!isEditing && (
+            <button onClick={() => setIsEditing(true)} className="flex items-center text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">
+               <Edit3 className="w-3 h-3 mr-1.5" /> Edit
+            </button>
+         )}
+       </div>
        
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center mb-4">
-          <img src={user.imageUrl} className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-50" />
-          <h3 className="font-bold text-lg text-slate-900">{user.fullName}</h3>
-          <p className="text-xs text-slate-500">{user.primaryEmailAddress?.emailAddress}</p>
-          <div className="mt-3 inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-slate-200">
-            {mongoUser?.role || "Member"}
+       {/* Header Card */}
+       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center mb-6 relative overflow-hidden">
+          <div className={`absolute top-0 left-0 right-0 h-20 ${formData.role === 'company' ? 'bg-slate-900' : 'bg-amber-500'}`}></div>
+          <div className="relative z-10 mt-8">
+            <img src={user.imageUrl} className="w-24 h-24 rounded-full mx-auto mb-3 border-4 border-white shadow-md" />
+            <h3 className="font-bold text-xl text-slate-900">{user.fullName}</h3>
+            <p className="text-xs text-slate-500 font-medium">{user.primaryEmailAddress?.emailAddress}</p>
+            <div className={`mt-4 inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${formData.role === 'company' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
+               {formData.role === 'company' ? <Building2 className="w-3 h-3 mr-1.5" /> : <User className="w-3 h-3 mr-1.5" />}
+               {formData.role} Account
+            </div>
           </div>
        </div>
 
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-slate-800 text-sm flex items-center">
-              {formData.role === 'company' ? <Building2 className="w-4 h-4 mr-2 text-indigo-500" /> : <User className="w-4 h-4 mr-2 text-emerald-500" />}
-              Account Details
-            </h4>
-            <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className="text-xs font-bold text-amber-600">
-              {isEditing ? "Save" : "Edit"}
-            </button>
-          </div>
+       {/* Details Form */}
+       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h4 className="font-bold text-slate-900 text-sm mb-5 pb-2 border-b border-slate-100">Account Details</h4>
 
-          <div className="space-y-3">
+          <div className="space-y-5">
             <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Type</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Account Type</label>
                {isEditing ? (
-                 <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                   <option value="individual">Individual</option>
-                   <option value="company">Company</option>
+                 <select className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                   <option value="individual">Individual Professional</option>
+                   <option value="company">Railroad Company / Recruiter</option>
                  </select>
                ) : (
-                 <p className="text-sm text-slate-700 font-medium capitalize">{formData.role}</p>
+                 <div className="text-sm text-slate-700 font-medium capitalize flex items-center">
+                    {formData.role}
+                 </div>
                )}
+               {isEditing && <p className="text-[10px] text-slate-400 mt-1.5 italic">Companies can post jobs. Individuals can apply.</p>}
             </div>
 
             {formData.role === 'company' && (
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company Name</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Company Name</label>
                 {isEditing ? (
-                  <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="e.g. Union Pacific" />
                 ) : (
-                  <p className="text-sm text-slate-700 font-medium">{formData.companyName || "Not set"}</p>
+                  <p className="text-sm text-slate-900 font-medium">{formData.companyName || "Not set"}</p>
                 )}
               </div>
             )}
 
             {formData.role === 'individual' && (
                <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Job Title</label>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Current Job Title</label>
                {isEditing ? (
-                 <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                 <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} placeholder="e.g. Conductor" />
                ) : (
-                 <p className="text-sm text-slate-700 font-medium">{formData.jobTitle || "Not set"}</p>
+                 <p className="text-sm text-slate-900 font-medium">{formData.jobTitle || "Not set"}</p>
                )}
              </div>
             )}
           </div>
+
+          {isEditing && (
+             <div className="mt-8 flex gap-3">
+                <button onClick={() => setIsEditing(false)} className="flex-1 py-3 text-sm font-bold text-slate-500 bg-slate-100 rounded-xl hover:bg-slate-200 transition">Cancel</button>
+                <button onClick={handleSave} className={`flex-1 py-3 text-sm font-bold text-white rounded-xl shadow-lg transition ${formData.role === 'company' ? 'bg-slate-900 hover:bg-slate-800' : 'bg-amber-500 hover:bg-amber-600'}`}>Save Changes</button>
+             </div>
+          )}
        </div>
     </div>
   );
@@ -407,7 +432,7 @@ const LibraryView = ({ data }) => {
     }),
   [term, activeData]);
 
-  // Media Card Logic (Reused for Glossary)
+  // Media Card Logic
   const MediaCard = ({ item }) => {
     const getYoutubeId = (url) => {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
