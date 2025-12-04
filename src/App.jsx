@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2
 } from 'lucide-react';
 
 // ==========================================
@@ -86,7 +86,12 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           <button onClick={onProfileClick} className="text-slate-300 hover:text-white mr-2"><UserCircle className="w-6 h-6" /></button>
+           <button 
+             onClick={onProfileClick} 
+             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
+           >
+             <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
+           </button>
            <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
@@ -222,22 +227,25 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   );
 };
 
-// --- PROFILE VIEW ---
+// --- RICH PROFILE VIEW (RESTORED) ---
 const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ 
-    role: mongoUser?.role || 'individual',
-    companyName: mongoUser?.companyName || '',
-    jobTitle: mongoUser?.jobTitle || ''
+    role: 'individual', companyName: '', jobTitle: '', headline: '', location: '', about: '' 
   });
+  
+  const [experience, setExperience] = useState([
+     { id: 1, title: "Senior Conductor", company: "Amtrak", dates: "2018 - Present" }
+  ]);
 
   useEffect(() => {
     if (mongoUser) {
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         role: mongoUser.role || 'individual',
         companyName: mongoUser.companyName || '',
         jobTitle: mongoUser.jobTitle || ''
-      });
+      }));
     }
   }, [mongoUser]);
 
@@ -248,79 +256,99 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      if (res.ok) {
-        setIsEditing(false);
-        refreshProfile(); 
-      }
+      if (res.ok) { setIsEditing(false); refreshProfile(); }
     } catch (err) { console.error("Failed to update profile", err); }
   };
 
+  const addExperience = () => {
+     const title = prompt("Job Title:");
+     if(title) setExperience([...experience, { id: Date.now(), title, company: "New Company", dates: "2024 - Present" }]);
+  };
+
   return (
-    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-       <div className="flex justify-between items-end mb-6">
-         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">My Profile</h2>
-         {!isEditing && (
-            <button onClick={() => setIsEditing(true)} className="flex items-center text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">
-               <Edit3 className="w-3 h-3 mr-1.5" /> Edit
-            </button>
-         )}
-       </div>
-       
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center mb-4">
-          <img src={user.imageUrl} className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-50" />
-          <h3 className="font-bold text-lg text-slate-900">{user.fullName}</h3>
-          <p className="text-xs text-slate-500">{user.primaryEmailAddress?.emailAddress}</p>
-          <div className="mt-3 inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-slate-200">
-            {mongoUser?.role || "Member"}
-          </div>
-       </div>
-
-       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-bold text-slate-800 text-sm flex items-center">
-              {formData.role === 'company' ? <Building2 className="w-4 h-4 mr-2 text-indigo-500" /> : <User className="w-4 h-4 mr-2 text-emerald-500" />}
-              Account Details
-            </h4>
-            <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className="text-xs font-bold text-amber-600">
-              {isEditing ? "Save" : "Edit"}
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Type</label>
-               {isEditing ? (
-                 <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                   <option value="individual">Individual</option>
-                   <option value="company">Company</option>
-                 </select>
-               ) : (
-                 <p className="text-sm text-slate-700 font-medium capitalize">{formData.role}</p>
-               )}
-            </div>
-
-            {formData.role === 'company' && (
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company Name</label>
-                {isEditing ? (
-                  <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
-                ) : (
-                  <p className="text-sm text-slate-700 font-medium">{formData.companyName || "Not set"}</p>
+    <div className="pb-20 bg-slate-50 min-h-full">
+       {/* Profile Banner & Header */}
+       <div className="bg-white border-b border-slate-200 pb-6 mb-4">
+          <div className={`h-24 ${formData.role === 'company' ? 'bg-slate-900' : 'bg-gradient-to-r from-sky-500 to-indigo-500'} relative`}></div>
+          <div className="px-4 -mt-10 relative">
+             <div className="flex justify-between items-end">
+                <img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white shadow-md" />
+                {!isEditing && (
+                  <button onClick={() => setIsEditing(true)} className="mb-2 flex items-center text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition">
+                     <Edit3 className="w-3 h-3 mr-1.5" /> Edit Profile
+                  </button>
                 )}
-              </div>
-            )}
-
-            {formData.role === 'individual' && (
-               <div>
-               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Job Title</label>
-               {isEditing ? (
-                 <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
-               ) : (
-                 <p className="text-sm text-slate-700 font-medium">{formData.jobTitle || "Not set"}</p>
-               )}
              </div>
-            )}
+             <div className="mt-3">
+                <h2 className="text-xl font-bold text-slate-900">{user.fullName}</h2>
+                <p className="text-sm text-slate-600">{formData.headline || (formData.role === 'company' ? 'Railroad Operations Company' : 'Rail Industry Professional')}</p>
+                <div className="flex items-center text-xs text-slate-400 mt-1">
+                   <MapPin className="w-3 h-3 mr-1" /> {formData.location || "New York, USA"}
+                   <span className="mx-2">•</span>
+                   <span className="text-indigo-600 font-bold cursor-pointer hover:underline">Contact Info</span>
+                </div>
+             </div>
           </div>
+       </div>
+
+       <div className="px-4 space-y-4">
+          
+          {/* Account Settings Card */}
+          {isEditing && (
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
+                <h4 className="font-bold text-slate-900 text-sm mb-4">Edit Intro</h4>
+                <div className="space-y-3">
+                   <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Account Type</label>
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                        <option value="individual">Individual</option><option value="company">Company</option>
+                      </select>
+                   </div>
+                   {formData.role === 'individual' ? (
+                      <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" placeholder="Headline (e.g. Signal Engineer)" value={formData.headline} onChange={e => setFormData({...formData, headline: e.target.value})} />
+                   ) : (
+                      <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" placeholder="Company Name" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
+                   )}
+                   <div className="flex gap-2 pt-2">
+                      <button onClick={() => setIsEditing(false)} className="flex-1 py-2 text-xs font-bold text-slate-500 bg-slate-100 rounded-lg">Cancel</button>
+                      <button onClick={handleSave} className="flex-1 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg shadow">Save</button>
+                   </div>
+                </div>
+            </div>
+          )}
+
+          {/* About Section */}
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+             <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-slate-900 text-sm">About</h3>
+             </div>
+             <p className="text-xs text-slate-600 leading-relaxed">
+               {formData.about || "Passionate rail industry professional with experience in signaling and operations. Focused on safety and efficiency."}
+             </p>
+          </div>
+
+          {/* Experience Section (Only for Individuals) */}
+          {formData.role === 'individual' && (
+             <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex justify-between items-center mb-4">
+                   <h3 className="font-bold text-slate-900 text-sm">Experience</h3>
+                   <button onClick={addExperience}><Plus className="w-4 h-4 text-slate-400 hover:text-indigo-600" /></button>
+                </div>
+                <div className="space-y-4">
+                   {experience.map((exp, i) => (
+                      <div key={exp.id} className="flex gap-3">
+                         <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center flex-shrink-0"><Building2 className="w-5 h-5 text-slate-400" /></div>
+                         <div className="flex-1 border-b border-slate-100 pb-4 last:border-0">
+                            <h4 className="text-sm font-bold text-slate-800">{exp.title}</h4>
+                            <p className="text-xs text-slate-600">{exp.company}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{exp.dates}</p>
+                         </div>
+                         {isEditing && <button onClick={() => setExperience(experience.filter(e => e.id !== exp.id))}><Trash2 className="w-3 h-3 text-red-300 hover:text-red-500" /></button>}
+                      </div>
+                   ))}
+                </div>
+             </div>
+          )}
        </div>
     </div>
   );
@@ -389,12 +417,12 @@ const HomeView = ({ changeTab, jobs }) => (
         <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
       </div>
       <div className="space-y-3">
-        {jobs && jobs.length > 0 ? jobs.slice(0, 3).map((job) => (
-          <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between">
-            <div><h3 className="font-bold text-slate-800 text-sm">{job.title}</h3><p className="text-xs font-medium text-slate-500">{job.company}</p></div>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{job.salary ? job.salary.split(' ')[0] : 'DOE'}</span>
+        {jobs.slice(0, 3).map((job, idx) => (
+          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <h3 className="font-bold text-sm text-slate-800">{job.title}</h3>
+            <p className="text-xs text-slate-500">{job.company}</p>
           </div>
-        )) : <div className="text-center p-4 text-slate-400 text-xs italic">No jobs available.</div>}
+        ))}
       </div>
     </div>
   </div>
@@ -534,7 +562,7 @@ const LibraryView = ({ data }) => {
   );
 };
 
-// --- Other Views (Home, Jobs, Tools) ---
+// --- Other Views (Jobs, Tools) ---
 const JobsView = ({ jobs }) => (
   <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
     <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
