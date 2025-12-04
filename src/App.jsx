@@ -3,21 +3,21 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2
 } from 'lucide-react';
 
 // ==========================================
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+// 🅰️ PRODUCTION CONFIG (UNCOMMENT THIS BLOCK FOR PRODUCTION):
 
 const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
@@ -58,7 +58,7 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   </button>
 );
 
-const Header = ({ isOffline, isPro }) => (
+const Header = ({ isOffline, isPro, onProfileClick }) => (
   <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md`}>
     {isOffline && (
       <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-900 text-[10px] font-bold text-center py-0.5">
@@ -86,7 +86,8 @@ const Header = ({ isOffline, isPro }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <UserButton afterSignOutUrl="/" />
+           <button onClick={onProfileClick} className="text-slate-300 hover:text-white mr-2"><UserCircle className="w-6 h-6" /></button>
+           <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
     </div>
@@ -130,22 +131,167 @@ const PaywallModal = ({ onClose }) => {
   );
 };
 
-const LoadingScreen = () => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400">
-    <Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" />
-    <p className="text-xs font-bold uppercase tracking-widest">Connecting...</p>
+// --- PROFILE VIEW (Startup 2.0 Feature) ---
+const ProfileView = ({ user, mongoUser, refreshProfile }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ 
+    role: mongoUser?.role || 'individual',
+    companyName: mongoUser?.companyName || '',
+    jobTitle: mongoUser?.jobTitle || ''
+  });
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        refreshProfile(); // Refresh parent state
+      }
+    } catch (err) { console.error("Failed to update profile", err); }
+  };
+
+  return (
+    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
+       <div className="mb-5 mt-2"><h2 className="text-xl font-bold text-slate-900 tracking-tight">My Profile</h2></div>
+       
+       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center mb-4">
+          <img src={user.imageUrl} className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-50" />
+          <h3 className="font-bold text-lg text-slate-900">{user.fullName}</h3>
+          <p className="text-xs text-slate-500">{user.primaryEmailAddress?.emailAddress}</p>
+          <div className="mt-3 inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-slate-200">
+            {mongoUser?.role || "Member"}
+          </div>
+       </div>
+
+       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-bold text-slate-800 text-sm flex items-center">
+              {formData.role === 'company' ? <Building2 className="w-4 h-4 mr-2 text-indigo-500" /> : <User className="w-4 h-4 mr-2 text-emerald-500" />}
+              Account Details
+            </h4>
+            <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className="text-xs font-bold text-amber-600">
+              {isEditing ? "Save" : "Edit"}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Type</label>
+               {isEditing ? (
+                 <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                   <option value="individual">Individual</option>
+                   <option value="company">Company</option>
+                 </select>
+               ) : (
+                 <p className="text-sm text-slate-700 font-medium capitalize">{formData.role}</p>
+               )}
+            </div>
+
+            {formData.role === 'company' && (
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company Name</label>
+                {isEditing ? (
+                  <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
+                ) : (
+                  <p className="text-sm text-slate-700 font-medium">{formData.companyName || "Not set"}</p>
+                )}
+              </div>
+            )}
+
+            {formData.role === 'individual' && (
+               <div>
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Job Title</label>
+               {isEditing ? (
+                 <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+               ) : (
+                 <p className="text-sm text-slate-700 font-medium">{formData.jobTitle || "Not set"}</p>
+               )}
+             </div>
+            )}
+          </div>
+       </div>
+    </div>
+  );
+};
+
+// --- ADMIN VIEW ---
+const AdminInput = ({ label, value, onChange, placeholder, type="text" }) => (
+  <div className="mb-3"><label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</label><input type={type} value={value} onChange={onChange} placeholder={placeholder} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" /></div>
+);
+
+const AdminView = ({ refreshData, isOffline }) => {
+  const [mode, setMode] = useState('job'); 
+  const [status, setStatus] = useState(null); 
+  const [jobForm, setJobForm] = useState({ title: '', company: '', location: '', salary: '', category: 'Field' });
+  const [termForm, setTermForm] = useState({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
+  
+  const handleSubmit = async () => {
+    if (isOffline) { alert("Cannot save in Offline Mode"); return; }
+    setStatus(null);
+    let endpoint = mode === 'job' ? '/jobs' : '/glossary';
+    let body = mode === 'job' ? { ...jobForm, tags: ["New"] } : termForm;
+
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error("Failed to save");
+      setStatus('success'); refreshData();
+      setJobForm({ title: '', company: '', location: '', salary: '', category: 'Field' });
+      setTermForm({ term: '', def: '', hasVisual: false, visualTag: '', videoUrl: '' });
+    } catch (err) { console.error(err); setStatus('error'); }
+  };
+
+  return (
+    <div className="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
+      <div className="flex items-center space-x-2 mb-4"><Lock className="w-4 h-4 text-slate-900" /><h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Admin Dashboard</h3></div>
+      <div className="flex bg-white p-1 rounded-lg border border-slate-200 mb-4">
+        {['job', 'term'].map(m => (<button key={m} onClick={() => setMode(m)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-md capitalize transition ${mode === m ? 'bg-slate-900 text-white' : 'text-slate-500'}`}>Add {m}</button>))}
+      </div>
+      <div className="bg-white p-4 rounded-lg border border-slate-200">
+        {mode === 'job' && ( <> <AdminInput label="Job Title" value={jobForm.title} onChange={e => setJobForm({...jobForm, title: e.target.value})} /> <AdminInput label="Company" value={jobForm.company} onChange={e => setJobForm({...jobForm, company: e.target.value})} /> <AdminInput label="Location" value={jobForm.location} onChange={e => setJobForm({...jobForm, location: e.target.value})} /> <AdminInput label="Salary" value={jobForm.salary} onChange={e => setJobForm({...jobForm, salary: e.target.value})} /> </> )}
+        {mode === 'term' && ( <> <AdminInput label="Term" value={termForm.term} onChange={e => setTermForm({...termForm, term: e.target.value})} /> <textarea className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm h-20 mb-3" placeholder="Definition..." value={termForm.def} onChange={e => setTermForm({...termForm, def: e.target.value})}></textarea> <AdminInput label="Image Path" value={termForm.visualTag} onChange={e => setTermForm({...termForm, visualTag: e.target.value, hasVisual: !!e.target.value})} placeholder="/diagrams/image.jpg" /> <AdminInput label="Video URL" value={termForm.videoUrl} onChange={e => setTermForm({...termForm, videoUrl: e.target.value})} /> </> )}
+        <button onClick={handleSubmit} disabled={isOffline} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Save Data</button>
+        {status === 'success' && <p className="text-emerald-600 text-xs font-bold mt-2 text-center">Saved!</p>}
+      </div>
+    </div>
+  );
+};
+
+// --- Standard Views ---
+const LoadingScreen = () => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Connecting...</p></div>);
+const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
+
+const HomeView = ({ changeTab, jobs }) => (
+  <div className="pb-20">
+    <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+      <div className="relative z-10">
+        <span className="inline-block px-2 py-1 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded mb-3 border border-amber-500/20">DAILY BRIEFING</span>
+        <h2 className="text-2xl font-bold mb-2 leading-tight">Future of Freight</h2>
+        <p className="text-slate-400 text-sm mb-6 max-w-[90%] leading-relaxed">How autonomous rail cars are reshaping the supply chain in 2025.</p>
+      </div>
+    </div>
+    <div className="mt-8 px-4">
+      <div className="flex justify-between items-end mb-4">
+        <SectionTitle title="Recent Listings" subtitle="Top-tier opportunities." />
+        <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
+      </div>
+      <div className="space-y-3">
+        {jobs && jobs.length > 0 ? jobs.slice(0, 3).map((job) => (
+          <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between">
+            <div><h3 className="font-bold text-slate-800 text-sm">{job.title}</h3><p className="text-xs font-medium text-slate-500">{job.company}</p></div>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{job.salary ? job.salary.split(' ')[0] : 'DOE'}</span>
+          </div>
+        )) : <div className="text-center p-4 text-slate-400 text-xs italic">No jobs available.</div>}
+      </div>
+    </div>
   </div>
 );
 
-const ErrorScreen = ({ msg }) => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center">
-    <WifiOff className="w-10 h-10 text-slate-300 mb-4" />
-    <p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p>
-    <p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p>
-  </div>
-);
-
-// --- EXPANDED LIBRARY VIEW (Startup 2.0 Foundation) ---
+// --- EXPANDED LIBRARY VIEW ---
 const LibraryView = ({ data }) => {
   const [activeSubTab, setActiveSubTab] = useState('glossary');
   const [term, setTerm] = useState('');
@@ -352,17 +498,13 @@ const MainContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState({ jobs: [], glossary: [], standards: [], manuals: [], regulations: [], mandates: [], signals: [] });
-  const [isOffline, setIsOffline] = useState(false);
-  
-  // --- PAYWALL STATE ---
-  const [isPro, setIsPro] = useState(false); // Default is free user
+  const [isPro, setIsPro] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  
-  const { user, isLoaded, isSignedIn } = useUser();
+  const [mongoUser, setMongoUser] = useState(null);
+  const { user, isSignedIn } = useUser();
 
   const fetchData = async () => {
     setLoading(true);
-    setIsOffline(false);
     try {
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
       const results = await Promise.race([
@@ -377,49 +519,46 @@ const MainContent = () => {
       const [jobs, glossary, signals, standards, manuals, regulations, mandates] = await Promise.all(results.map(r => r.json()));
       
       setData({ jobs, glossary, signals, standards, manuals, regulations, mandates });
-    } catch (err) {
-      console.warn("API Unavailable, switching to demo mode.");
-      setIsOffline(true);
-      setData({ 
-        jobs: FALLBACK_JOBS, 
-        glossary: FALLBACK_GLOSSARY, 
-        signals: FALLBACK_SIGNALS,
-        standards: FALLBACK_STANDARDS, 
-        manuals: [], regulations: [], mandates: [] 
-      });
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_SIGNALS, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  // Placeholder for Admin View (Use your existing full version locally)
-  const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel Placeholder (See local code)</div>;
+  useEffect(() => {
+    if (isSignedIn && user) {
+      fetch(`${API_URL}/users/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clerkId: user.id, email: user.primaryEmailAddress.emailAddress }) })
+      .then(res => res.json()).then(userData => setMongoUser(userData)).catch(err => console.error("User Sync Error:", err));
+    }
+  }, [isSignedIn, user]);
+
+  // Admin View Placeholder (Use your existing one locally)
+  const AdminView = ({ refreshData }) => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel (See local code for full view)</div>;
   
+  const ADMIN_EMAIL = "wayne@railnology.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
   return (
     <div className="min-h-screen bg-slate-200 flex items-center justify-center font-sans">
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-      
       <div className="w-full max-w-md h-full min-h-screen bg-slate-50 shadow-2xl relative flex flex-col">
-        <Header isOffline={isOffline} isPro={isPro} />
-        
+        <Header onProfileClick={() => setActiveTab('profile')} isOffline={false} isPro={isPro} />
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {/* SECURE ADMIN PANEL */}
-          {activeTab === 'home' && isSuperAdmin && <AdminView refreshData={fetchData} isOffline={isOffline} />}
-
-          {loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
-            <>
-              {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
-              {activeTab === 'learn' && <LibraryView data={data} />}
-              {activeTab === 'tools' && <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
-              {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
-            </>
+          {activeTab === 'home' && isSuperAdmin && <AdminView refreshData={fetchData} isOffline={false} />}
+          
+          {/* Profile Tab */}
+          {activeTab === 'profile' && isSignedIn ? (
+             <ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => { /* Refetch logic */ }} />
+          ) : (
+            loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
+              <>
+                {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
+                {activeTab === 'learn' && <LibraryView data={data} />}
+                {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
+                {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
+              </>
+            )
           )}
         </div>
-
         <div className="bg-white border-t border-slate-200 px-4 pb-safe sticky bottom-0 z-50">
           <div className="flex justify-between items-center h-16">
             <TabButton active={activeTab} id="home" icon={Train} label="Home" onClick={setActiveTab} />
@@ -433,13 +572,5 @@ const MainContent = () => {
   );
 };
 
-// Wrap the App in the Clerk Provider
-const App = () => {
-  return (
-    <ClerkProvider publishableKey={CLERK_KEY}>
-      <MainContent />
-    </ClerkProvider>
-  );
-};
-
+const App = () => (<ClerkProvider publishableKey={CLERK_KEY}><MainContent /></ClerkProvider>);
 export default App;
