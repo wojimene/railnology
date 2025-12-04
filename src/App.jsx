@@ -534,26 +534,6 @@ const LibraryView = ({ data }) => {
 };
 
 // --- Other Views (Home, Jobs, Tools) ---
-const HomeView = ({ changeTab, jobs }) => (
-  <div className="pb-20">
-    <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl">
-      <h2 className="text-2xl font-bold mb-2">Railnology 2.0</h2>
-      <p className="text-slate-400 text-sm">The future of rail compliance.</p>
-    </div>
-    <div className="mt-8 px-4">
-      <SectionTitle title="Recent Listings" />
-      <div className="space-y-3">
-        {jobs.slice(0, 3).map((job, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-            <h3 className="font-bold text-sm text-slate-800">{job.title}</h3>
-            <p className="text-xs text-slate-500">{job.company}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
 const JobsView = ({ jobs }) => (
   <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
     <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
