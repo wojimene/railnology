@@ -10,19 +10,21 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ✅ REAL CLERK (PRODUCTION):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ PRODUCTION CONFIG:
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+// Safety Check
+if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
