@@ -18,12 +18,10 @@ import {
 // ==========================================
 
 // 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
 const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-
 
 // --- Branding Constants ---
 const BRAND = {
@@ -143,6 +141,8 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        fetch(`${API_URL}/jobs`)
          .then(res => res.json())
          .then(data => {
+            // Filter for jobs owned by this company
+            // Note: Ideally backend filters this, but client-side works for MVP
             const myJobs = data.filter(j => j.company === mongoUser.companyName);
             setJobs(myJobs);
          });
