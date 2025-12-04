@@ -10,21 +10,19 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// ✅ REAL CLERK (PRODUCTION):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// ✅ PRODUCTION CONFIG:
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+
+const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-
-// Safety Check
-if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -374,7 +372,6 @@ const AdminView = ({ refreshData, isOffline }) => {
 const LoadingScreen = () => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-amber-500 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Connecting...</p></div>);
 const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
 
-// --- HOME VIEW ---
 const HomeView = ({ changeTab, jobs }) => (
   <div className="pb-20">
     <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
@@ -537,6 +534,26 @@ const LibraryView = ({ data }) => {
 };
 
 // --- Other Views (Home, Jobs, Tools) ---
+const HomeView = ({ changeTab, jobs }) => (
+  <div className="pb-20">
+    <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl">
+      <h2 className="text-2xl font-bold mb-2">Railnology 2.0</h2>
+      <p className="text-slate-400 text-sm">The future of rail compliance.</p>
+    </div>
+    <div className="mt-8 px-4">
+      <SectionTitle title="Recent Listings" />
+      <div className="space-y-3">
+        {jobs.slice(0, 3).map((job, idx) => (
+          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+            <h3 className="font-bold text-sm text-slate-800">{job.title}</h3>
+            <p className="text-xs text-slate-500">{job.company}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const JobsView = ({ jobs }) => (
   <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
     <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
