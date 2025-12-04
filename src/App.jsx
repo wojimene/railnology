@@ -11,37 +11,13 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
-const MockAuthContext = createContext(null);
-const ClerkProvider = ({ children }) => {
-  const [user, setUser] = useState(null); 
-  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
-};
-const useUser = () => {
-  const { user } = useContext(MockAuthContext);
-  return { user, isLoaded: true, isSignedIn: !!user };
-};
-const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
-const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
-const SignInButton = ({ children }) => {
-  const { setUser } = useContext(MockAuthContext);
-  // Simulates logging in as the Admin for the preview
-  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" }, fullName: "Wayne Admin", imageUrl: "https://i.pravatar.cc/150?img=11" }) });
-};
-const UserButton = () => {
-  const { setUser } = useContext(MockAuthContext);
-  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
-};
-// ==========================================
-
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+// 🅰️ PRODUCTION CONFIG (UNCOMMENT THIS BLOCK FOR PRODUCTION):
 
 const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
@@ -166,6 +142,8 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        fetch(`${API_URL}/jobs`)
          .then(res => res.json())
          .then(data => {
+            // Filter for jobs owned by this company
+            // Note: Ideally backend filters this, but client-side works for MVP
             const myJobs = data.filter(j => j.company === mongoUser.companyName);
             setJobs(myJobs);
          });
@@ -264,7 +242,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
       });
       if (res.ok) {
         setIsEditing(false);
-        refreshProfile(); 
+        refreshProfile(); // Refresh parent state
       }
     } catch (err) { console.error("Failed to update profile", err); }
   };
@@ -333,7 +311,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   );
 };
 
-// --- ADMIN VIEW ---
+// --- ADMIN VIEW (System Admin) ---
 const AdminInput = ({ label, value, onChange, placeholder, type="text" }) => (
   <div className="mb-3"><label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</label><input type={type} value={value} onChange={onChange} placeholder={placeholder} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" /></div>
 );
@@ -361,7 +339,7 @@ const AdminView = ({ refreshData, isOffline }) => {
 
   return (
     <div className="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
-      <div className="flex items-center space-x-2 mb-4"><Lock className="w-4 h-4 text-slate-900" /><h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Admin Dashboard</h3></div>
+      <div className="flex items-center space-x-2 mb-4"><Lock className="w-4 h-4 text-slate-900" /><h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">System Admin Dashboard</h3></div>
       <div className="flex bg-white p-1 rounded-lg border border-slate-200 mb-4">
         {['job', 'term'].map(m => (<button key={m} onClick={() => setMode(m)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-md capitalize transition ${mode === m ? 'bg-slate-900 text-white' : 'text-slate-500'}`}>Add {m}</button>))}
       </div>
