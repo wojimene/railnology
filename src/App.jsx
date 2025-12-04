@@ -11,7 +11,7 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
