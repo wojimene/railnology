@@ -59,8 +59,9 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   </button>
 );
 
+// Change 'bg-slate-900' (or similar) to 'bg-purple-600'
 const Header = ({ isOffline, isPro, onProfileClick }) => (
-  <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md`}>
+  <div className="bg-purple-600 text-white p-4 sticky top-0 z-50 shadow-md">
     {isOffline && (
       <div className="absolute top-0 left-0 right-0 bg-amber-500 text-slate-900 text-[10px] font-bold text-center py-0.5">
         OFFLINE / DEMO MODE
