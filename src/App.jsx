@@ -3,28 +3,58 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, Clock, Briefcase as JobIcon
 } from 'lucide-react';
 
 // ==========================================
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// ✅ REAL CLERK (PRODUCTION):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
+// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
+const MockAuthContext = createContext(null);
+const ClerkProvider = ({ children }) => {
+  const [user, setUser] = useState(null); 
+  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
+};
+const useUser = () => {
+  const { user } = useContext(MockAuthContext);
+  return { user, isLoaded: true, isSignedIn: !!user };
+};
+const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
+const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
+const SignInButton = ({ children }) => {
+  const { setUser } = useContext(MockAuthContext);
+  // Simulates logging in as the Admin for the preview
+  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" }, fullName: "Wayne Admin", imageUrl: "https://i.pravatar.cc/150?img=11" }) });
+};
+const UserButton = () => {
+  const { setUser } = useContext(MockAuthContext);
+  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
+};
+// ==========================================
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// ✅ PRODUCTION CONFIG:
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+/*
+const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+*/
 
-// Safety Check
-if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
+// 🅱️ PREVIEW / LOCAL FALLBACK (ACTIVE FOR NOW):
+const API_URL = "http://localhost:5000/api";
+const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE"; 
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_YOUR_LINK"; 
+const ADMIN_EMAIL = "wayne@railnology.com";
+
 
 // --- Branding Constants ---
 const BRAND = {
@@ -44,20 +74,16 @@ const MARKET_RATES = {
 };
 
 const getCompensation = (job) => {
-  // 1. Use Company Provided Salary
   if (job.salary && job.salary !== "Competitive" && job.salary !== "DOE") {
-    return job.salary;
+    return job.salary; // Use company provided salary if exists
   }
-
-  // 2. Use Local Market Rate (Based on Title Matching)
   const titleLower = job.title.toLowerCase();
   for (const [key, rate] of Object.entries(MARKET_RATES)) {
     if (titleLower.includes(key)) return rate;
   }
-
-  // 3. Fallback
   return "DOE";
 };
+
 
 // --- FALLBACK DATA ---
 const FALLBACK_JOBS = [
@@ -141,14 +167,14 @@ const JobLogo = ({ logo, company, size="sm" }) => {
 
   if (!logo || error) {
     return (
-      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 flex items-center justify-center shadow-sm`}>
+      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}>
         <Train className={`${iconSize} text-amber-500`} />
       </div>
     );
   }
 
   return (
-    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 flex items-center justify-center shadow-sm`}>
+    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}>
       <img 
         src={logo} 
         alt={company} 
@@ -158,6 +184,36 @@ const JobLogo = ({ logo, company, size="sm" }) => {
     </div>
   );
 };
+
+// --- REUSABLE JOB CARD ---
+const JobCard = ({ job, onClick }) => (
+  <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
+    <div className="flex justify-between items-start gap-3">
+      <JobLogo logo={job.logo} company={job.company} />
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-slate-800 text-sm truncate pr-6 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
+        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">
+          {job.company} 
+          {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}
+        </p>
+        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2">
+          <Globe className="w-3 h-3 mr-1" /> {job.location}
+          <span className="mx-2 text-slate-200">|</span>
+          <span className="text-emerald-600 font-bold">{getCompensation(job)}</span>
+        </div>
+        <div className="flex gap-2 mt-2">
+            <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>
+            {job.externalLink && (
+              <div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">
+                Apply <ExternalLink className="w-2.5 h-2.5 ml-1" />
+              </div>
+            )}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 
 // --- Paywall Component ---
 const PaywallModal = ({ onClose }) => {
@@ -184,133 +240,6 @@ const PaywallModal = ({ onClose }) => {
           <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Restore Purchases</button>
         </div>
         <p className="text-[10px] text-center text-slate-300 mt-4">Secured by Stripe</p>
-      </div>
-    </div>
-  );
-};
-
-// --- JOBS VIEW (List & Detail) ---
-const JobsView = ({ jobs }) => {
-  const [selectedJob, setSelectedJob] = useState(null);
-
-  // --- DETAIL VIEW ---
-  if (selectedJob) {
-    const compensation = getCompensation(selectedJob);
-    
-    return (
-      <div className="pb-20 bg-slate-50 min-h-full">
-        {/* Header */}
-        <div className="bg-white border-b border-slate-200 p-4 sticky top-0 z-40 flex items-center shadow-sm">
-          <button onClick={() => setSelectedJob(null)} className="mr-3 text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <span className="font-bold text-slate-800 text-sm">Job Details</span>
-        </div>
-
-        <div className="p-6">
-          {/* Main Info */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <JobLogo logo={selectedJob.logo} company={selectedJob.company} size="lg" />
-            <h2 className="text-xl font-extrabold text-slate-900 mt-3 mb-1">{selectedJob.title}</h2>
-            <p className="text-sm font-medium text-slate-500">{selectedJob.company}</p>
-            <div className="flex items-center justify-center mt-3 space-x-2 text-xs">
-               <span className="flex items-center text-slate-600 bg-slate-100 px-2 py-1 rounded"><Globe className="w-3 h-3 mr-1" /> {selectedJob.location}</span>
-               <span className="flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold border border-emerald-100">{compensation}</span>
-            </div>
-          </div>
-
-          {/* Top Apply Button */}
-          {selectedJob.externalLink ? (
-             <a href={selectedJob.externalLink} target="_blank" rel="noreferrer" className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-slate-800 flex items-center justify-center mb-6 transition">
-                Apply Now <ExternalLink className="w-3 h-3 ml-2" />
-             </a>
-          ) : (
-             <button disabled className="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold text-sm mb-6 cursor-not-allowed">Application Unavailable</button>
-          )}
-
-          {/* Details */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-             <div>
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Job Description</h3>
-               <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                  {selectedJob.description && selectedJob.description.length > 10 
-                    ? selectedJob.description 
-                    : "No detailed description provided. Please visit the application page for more information."}
-               </p>
-             </div>
-             
-             {selectedJob.tags && selectedJob.tags.length > 0 && (
-               <div>
-                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</h3>
-                 <div className="flex flex-wrap gap-2">
-                    {selectedJob.tags.map((tag, i) => (
-                      <span key={i} className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded border border-slate-200">{tag}</span>
-                    ))}
-                 </div>
-               </div>
-             )}
-          </div>
-        </div>
-
-        {/* Bottom Action Bar */}
-        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-slate-200 p-4 flex items-center justify-between safe-area-pb">
-           <div className="text-xs font-medium text-slate-500">
-              Interested?
-           </div>
-           {selectedJob.externalLink && (
-              <a href={selectedJob.externalLink} target="_blank" rel="noreferrer" className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold text-xs shadow transition">
-                Start Application
-              </a>
-           )}
-        </div>
-      </div>
-    );
-  }
-
-  // --- LIST VIEW ---
-  return (
-    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-      <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
-      <div className="space-y-3">
-        {jobs.map((job) => {
-          const salaryDisplay = getCompensation(job);
-          return (
-            <div 
-              key={job._id || job.id || Math.random()} 
-              className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group"
-            >
-              <div className="flex justify-between items-start gap-3">
-                <JobLogo logo={job.logo} company={job.company} />
-                <div className="flex-1 min-w-0">
-                  {/* Hotlink Title */}
-                  <button onClick={() => setSelectedJob(job)} className="text-left w-full">
-                    <h3 className="font-bold text-slate-800 text-sm truncate pr-6 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
-                  </button>
-                  
-                  <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">
-                    {job.company} 
-                    {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}
-                  </p>
-                  
-                  <div className="flex items-center text-xs text-slate-400 mt-2 mb-2">
-                    <Globe className="w-3 h-3 mr-1" /> {job.location}
-                    <span className="mx-2 text-slate-200">|</span>
-                    <span className="text-emerald-600 font-bold">{salaryDisplay}</span>
-                  </div>
-
-                  <div className="flex gap-2 mt-2">
-                     <button onClick={() => setSelectedJob(job)} className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>
-                     {job.externalLink && (
-                        <a href={job.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">
-                          Apply <ExternalLink className="w-2.5 h-2.5 ml-1" />
-                        </a>
-                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -633,7 +562,7 @@ const LoadingScreen = () => (<div className="flex flex-col items-center justify-
 const ErrorScreen = ({ msg }) => (<div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-slate-400 px-6 text-center"><WifiOff className="w-10 h-10 text-slate-300 mb-4" /><p className="text-sm font-bold text-slate-600 mb-2">Connection Issue</p><p className="text-xs leading-relaxed max-w-[280px] mx-auto">{msg}</p></div>);
 
 // --- HOME VIEW ---
-const HomeView = ({ changeTab, jobs }) => (
+const HomeView = ({ changeTab, jobs, onJobClick }) => (
   <div className="pb-20">
     <div className="bg-slate-900 text-white pt-6 pb-12 px-6 rounded-b-[2rem] shadow-xl relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
@@ -649,48 +578,83 @@ const HomeView = ({ changeTab, jobs }) => (
         <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
       </div>
       <div className="space-y-3">
+        {/* Use reusable JobCard here */}
         {jobs.slice(0, 3).map((job, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition relative overflow-hidden">
-             <div className="flex justify-between items-start gap-3">
-               {/* Logo Section */}
-               <JobLogo logo={job.logo} company={job.company} />
-               
-               <div className="flex-1 min-w-0">
-                 <h3 className="font-bold text-slate-800 text-sm truncate pr-6">{job.title}</h3>
-                 <p className="text-xs font-medium text-slate-500 flex items-center">
-                   {job.company} 
-                   {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">External</span>}
-                 </p>
-                 <div className="flex items-center text-xs text-slate-400 mt-1.5 mb-2">
-                   <Globe className="w-3 h-3 mr-1" /> {job.location}
-                   <span className="mx-2 text-slate-200">|</span>
-                   <span className="text-emerald-600 font-bold">{getCompensation(job)}</span>
-                 </div>
-                 {/* Description Snippet */}
-                 {job.description && (
-                   <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-3">{job.description}</p>
-                 )}
-                 {/* Apply Button */}
-                 {job.externalLink ? (
-                    <a 
-                      href={job.externalLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-flex items-center text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
-                    >
-                      Apply Now <ExternalLink className="w-3 h-3 ml-1.5" />
-                    </a>
-                 ) : (
-                    <button className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg cursor-not-allowed">Apply on Site</button>
-                 )}
-               </div>
-             </div>
-          </div>
+          <JobCard key={idx} job={job} onClick={onJobClick} />
         ))}
       </div>
     </div>
   </div>
 );
+
+// --- JOBS VIEW (List & Detail) ---
+const JobsView = ({ jobs, onJobClick }) => {
+  return (
+    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
+      <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
+      <div className="space-y-3">
+        {jobs.map((job) => (
+          <JobCard key={job._id || Math.random()} job={job} onClick={onJobClick} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// --- JOB DETAIL VIEW (New!) ---
+const JobDetailView = ({ job, onBack }) => {
+  const compensation = getCompensation(job);
+  
+  return (
+    <div className="pb-20 bg-slate-50 min-h-full animate-in slide-in-from-right duration-200">
+      <div className="bg-white border-b border-slate-200 p-4 sticky top-0 z-40 flex items-center shadow-sm">
+        <button onClick={onBack} className="mr-3 text-slate-500 hover:text-slate-900"><ArrowLeft className="w-5 h-5" /></button>
+        <span className="font-bold text-slate-800 text-sm">Job Details</span>
+      </div>
+      <div className="p-6">
+        <div className="flex flex-col items-center text-center mb-6">
+          <JobLogo logo={job.logo} company={job.company} size="lg" />
+          <h2 className="text-xl font-extrabold text-slate-900 mt-3 mb-1">{job.title}</h2>
+          <p className="text-sm font-medium text-slate-500">{job.company}</p>
+          <div className="flex items-center justify-center mt-3 space-x-2 text-xs">
+             <span className="flex items-center text-slate-600 bg-slate-100 px-2 py-1 rounded"><Globe className="w-3 h-3 mr-1" /> {job.location}</span>
+             <span className="flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold border border-emerald-100">{compensation}</span>
+          </div>
+          {job.jobType && <span className="mt-2 text-[10px] text-slate-400 uppercase tracking-wider font-bold">{job.jobType}</span>}
+        </div>
+
+        {job.externalLink ? (
+           <a href={job.externalLink} target="_blank" rel="noreferrer" className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-slate-800 flex items-center justify-center mb-6 transition">Apply Now <ExternalLink className="w-3 h-3 ml-2" /></a>
+        ) : <button disabled className="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold text-sm mb-6 cursor-not-allowed">Application Unavailable</button>}
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+           <div>
+             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">About The Job</h3>
+             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                {/* Display FULL description if available */}
+                {job.description || "No description available."}
+             </p>
+           </div>
+           {job.tags && job.tags.length > 0 && (
+             <div>
+               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</h3>
+               <div className="flex flex-wrap gap-2">
+                  {job.tags.map((tag, i) => <span key={i} className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded border border-slate-200">{tag}</span>)}
+               </div>
+             </div>
+           )}
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex items-center justify-between safe-area-pb z-50">
+         <div className="text-xs font-medium text-slate-500">Ready to apply?</div>
+         {job.externalLink && (
+            <a href={job.externalLink} target="_blank" rel="noreferrer" className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold text-xs shadow transition">Start Application</a>
+         )}
+      </div>
+    </div>
+  );
+};
 
 // --- EXPANDED LIBRARY VIEW ---
 const LibraryView = ({ data }) => {
@@ -857,6 +821,7 @@ const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
 // --- MAIN APP COMPONENT ---
 const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const [selectedJob, setSelectedJob] = useState(null); // Tracks full page job detail
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState({ jobs: [], glossary: [], standards: [], manuals: [], regulations: [], mandates: [], signals: [] });
@@ -899,6 +864,11 @@ const MainContent = () => {
   const ADMIN_EMAIL = "wayne@railnology.com"; 
   const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
 
+  // Render Detail View if a job is selected
+  if (selectedJob) {
+    return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-200 flex items-center justify-center font-sans">
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -926,10 +896,10 @@ const MainContent = () => {
              activeTab !== 'company' && activeTab !== 'profile' && (
               loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
                 <>
-                  {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} />}
+                  {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />}
                   {activeTab === 'learn' && <LibraryView data={data} />}
                   {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
-                  {activeTab === 'jobs' && <JobsView jobs={data.jobs} />} 
+                  {activeTab === 'jobs' && <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />} 
                 </>
               )
             )
