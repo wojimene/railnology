@@ -11,7 +11,8 @@ import {
 // ==========================================
 
 // 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
@@ -72,16 +73,8 @@ const formatDate = (dateString) => {
 };
 
 // --- FALLBACK DATA ---
-const FALLBACK_JOBS = [
-  { id: 1, title: "Senior Locomotive Engineer", company: "BNSF Railway", location: "Fort Worth, TX", salary: "$95k - $125k", category: "Field", tags: ["Sign-on Bonus", "Union"] },
-];
-const FALLBACK_GLOSSARY = [
-  { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
-];
-const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
-const FALLBACK_SIGNALS = [
-  { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
-];
+const FALLBACK_JOBS = [];
+const FALLBACK_GLOSSARY = [];
 
 // --- Components ---
 
@@ -125,6 +118,7 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
+           {/* ✅ Explicit Profile Button */}
            <button 
              onClick={onProfileClick} 
              className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
@@ -302,7 +296,6 @@ const RailOpsView = () => {
     const fetchUrl = viewMode === 'history' ? `${API_URL}/schedules?type=history` : `${API_URL}/schedules`;
     Promise.all([fetch(`${API_URL}/crew`), fetch(fetchUrl)])
       .then(async ([res1, res2]) => {
-         // Handle potential errors if backend isn't ready
          const c = res1.ok ? await res1.json() : [];
          const s = res2.ok ? await res2.json() : [];
          setCrews(c);
@@ -315,19 +308,16 @@ const RailOpsView = () => {
   const handleAssign = async (crewId) => {
     if(!selectedScheduleId) return;
     
-    // 1. Send Assignment to Backend
     await fetch(`${API_URL}/schedules/${selectedScheduleId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ crewId })
     });
     
-    // 2. Refresh Schedules (Update Train Card)
     const schedRes = await fetch(`${API_URL}/schedules`);
     const newSchedules = await schedRes.json();
     setSchedules(newSchedules);
 
-    // 3. Refresh Crews (Update Crew Status & Availability Pool)
     const crewRes = await fetch(`${API_URL}/crew`);
     const newCrews = await crewRes.json();
     setCrews(newCrews);
