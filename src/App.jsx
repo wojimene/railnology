@@ -80,7 +80,6 @@ const FALLBACK_REGULATIONS = [];
 const FALLBACK_MANDATES = [];
 const FALLBACK_SIGNALS = [];
 
-
 // --- Components ---
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
