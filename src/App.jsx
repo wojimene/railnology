@@ -3,26 +3,28 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Check
 } from 'lucide-react';
 
 // ==========================================
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ✅ REAL CLERK (PRODUCTION):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ PRODUCTION CONFIG:
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+// Safety Check
+if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -32,7 +34,7 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
-// --- MARKET RATE DATA (Simulated Public Research) ---
+// --- MARKET RATE DATA ---
 const MARKET_RATES = {
   "conductor": "$60k - $85k (Mkt Est.)",
   "engineer": "$75k - $110k (Mkt Est.)",
@@ -118,7 +120,6 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           {/* ✅ Explicit Profile Button */}
            <button 
              onClick={onProfileClick} 
              className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
@@ -165,7 +166,7 @@ const JobLogo = ({ logo, company, size="sm" }) => {
   );
 };
 
-// --- REUSABLE JOB CARD (Defined BEFORE it is used) ---
+// --- REUSABLE JOB CARD ---
 const JobCard = ({ job, onClick }) => (
   <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
     <div className="flex justify-between items-start gap-3">
@@ -212,7 +213,7 @@ const PaywallModal = ({ onClose }) => {
           <a 
             href={STRIPE_PAYMENT_LINK} 
             target="_blank" 
-            rel="noreferrer"
+            rel="noreferrer" // Just a link now, logic handled by redirect
             className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
           >
             <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
@@ -893,6 +894,19 @@ const MainContent = () => {
   useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
+    // Check for Stripe success
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('payment') === 'success') {
+       setIsPro(true);
+       localStorage.setItem('railnology_pro', 'true');
+       // Optional: Call backend to update user status in DB
+    }
+    
+    // Check local storage
+    if (localStorage.getItem('railnology_pro') === 'true') {
+       setIsPro(true);
+    }
+
     if (isSignedIn && user) {
       fetch(`${API_URL}/users/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clerkId: user.id, email: user.primaryEmailAddress.emailAddress }) })
       .then(res => res.json()).then(userData => setMongoUser(userData)).catch(err => console.error("User Sync Error:", err));
@@ -939,7 +953,7 @@ const MainContent = () => {
                 <>
                   {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />}
                   {activeTab === 'learn' && <LibraryView data={data} />}
-                  {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
+                  {activeTab === 'tools' && <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
                   {activeTab === 'jobs' && <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />} 
                 </>
               )
