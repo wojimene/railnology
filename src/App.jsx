@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Clock, Calendar, Users, AlertCircle, History
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock
 } from 'lucide-react';
 
 // ==========================================
@@ -78,6 +78,10 @@ const FALLBACK_JOBS = [
 const FALLBACK_GLOSSARY = [
   { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
 ];
+const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
+const FALLBACK_SIGNALS = [
+  { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
+];
 
 // --- Components ---
 
@@ -141,14 +145,33 @@ const SectionTitle = ({ title, subtitle }) => (
   </div>
 );
 
+// --- HELPER: Job Logo Component ---
 const JobLogo = ({ logo, company, size="sm" }) => {
   const [error, setError] = useState(false);
   const dims = size === "lg" ? "w-16 h-16 p-2" : "w-12 h-12 p-1";
   const iconSize = size === "lg" ? "w-8 h-8" : "w-6 h-6";
-  if (!logo || error) return <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}><Train className={`${iconSize} text-amber-500`} /></div>;
-  return <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}><img src={logo} alt={company} className="w-full h-full object-contain rounded-md" onError={() => setError(true)} /></div>;
+
+  if (!logo || error) {
+    return (
+      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}>
+        <Train className={`${iconSize} text-amber-500`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}>
+      <img 
+        src={logo} 
+        alt={company} 
+        className="w-full h-full object-contain rounded-md" 
+        onError={() => setError(true)} 
+      />
+    </div>
+  );
 };
 
+// --- REUSABLE JOB CARD ---
 const JobCard = ({ job, onClick }) => (
   <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
     <div className="flex justify-between items-start gap-3">
@@ -279,8 +302,9 @@ const RailOpsView = () => {
     const fetchUrl = viewMode === 'history' ? `${API_URL}/schedules?type=history` : `${API_URL}/schedules`;
     Promise.all([fetch(`${API_URL}/crew`), fetch(fetchUrl)])
       .then(async ([res1, res2]) => {
-         const c = await res1.json();
-         const s = await res2.json();
+         // Handle potential errors if backend isn't ready
+         const c = res1.ok ? await res1.json() : [];
+         const s = res2.ok ? await res2.json() : [];
          setCrews(c);
          setSchedules(s);
          setLoading(false);
@@ -291,15 +315,23 @@ const RailOpsView = () => {
   const handleAssign = async (crewId) => {
     if(!selectedScheduleId) return;
     
+    // 1. Send Assignment to Backend
     await fetch(`${API_URL}/schedules/${selectedScheduleId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ crewId })
     });
     
-    // Refresh data
-    const res = await fetch(`${API_URL}/schedules`);
-    setSchedules(await res.json());
+    // 2. Refresh Schedules (Update Train Card)
+    const schedRes = await fetch(`${API_URL}/schedules`);
+    const newSchedules = await schedRes.json();
+    setSchedules(newSchedules);
+
+    // 3. Refresh Crews (Update Crew Status & Availability Pool)
+    const crewRes = await fetch(`${API_URL}/crew`);
+    const newCrews = await crewRes.json();
+    setCrews(newCrews);
+
     setSelectedScheduleId(null); // Close modal
   };
 
@@ -730,6 +762,7 @@ const HomeView = ({ changeTab, jobs, onJobClick }) => (
         <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
       </div>
       <div className="space-y-3">
+        {/* Use reusable JobCard here */}
         {jobs.slice(0, 3).map((job, idx) => (
           <JobCard key={idx} job={job} onClick={onJobClick} />
         ))}
