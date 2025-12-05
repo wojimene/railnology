@@ -41,7 +41,7 @@ const MARKET_RATES = {
   "manager": "$95k - $130k (Mkt Est.)"
 };
 
-// --- HELPER: Salary Formatter ---
+// --- HELPER: Formats ---
 const formatSalary = (val) => {
   if (!val) return "DOE";
   if (val === "Competitive" || val === "DOE") return val;
@@ -123,6 +123,7 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
+           {/* ✅ Explicit Profile Button */}
            <button 
              onClick={onProfileClick} 
              className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
@@ -320,12 +321,12 @@ const RailOpsView = () => {
         body: JSON.stringify({ crewId })
     });
     
-    // 2. Refresh Schedules (Update Train Card)
+    // ✅ 2. REFRESH EVERYTHING (Critical for State Sync)
+    // We fetch crews AND schedules again so the UI updates instantly
     const schedRes = await fetch(`${API_URL}/schedules`);
     const newSchedules = await schedRes.json();
     setSchedules(newSchedules);
 
-    // 3. Refresh Crews (Update Crew Status & Availability Pool)
     const crewRes = await fetch(`${API_URL}/crew`);
     const newCrews = await crewRes.json();
     setCrews(newCrews);
@@ -852,8 +853,7 @@ const LibraryView = ({ data }) => {
     { id: 'mandates', label: 'Mandates', icon: ScrollText, data: data.mandates },
   ];
 
-  // ✅ ERROR FIX: Define fallbacks to prevent crash if data is missing
-  const activeData = (tabs.find(t => t.id === activeSubTab)?.data || []) || [];
+  const activeData = tabs.find(t => t.id === activeSubTab)?.data || [];
   
   const filtered = useMemo(() => 
     activeData.filter(item => {
