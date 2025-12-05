@@ -10,8 +10,8 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
@@ -227,7 +227,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   );
 };
 
-// --- RICH PROFILE VIEW (RESTORED) ---
+// --- PROFILE VIEW ---
 const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -418,9 +418,37 @@ const HomeView = ({ changeTab, jobs }) => (
       </div>
       <div className="space-y-3">
         {jobs.slice(0, 3).map((job, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-            <h3 className="font-bold text-sm text-slate-800">{job.title}</h3>
-            <p className="text-xs text-slate-500">{job.company}</p>
+          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition relative overflow-hidden">
+             <div className="flex justify-between items-start gap-3">
+               {/* Logo Section */}
+               {job.logo && (
+                 <div className="w-12 h-12 flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center">
+                    <img src={job.logo} alt={job.company} className="w-full h-full object-contain" onError={(e) => e.target.style.display='none'} />
+                 </div>
+               )}
+               <div className="flex-1 min-w-0">
+                 <h3 className="font-bold text-slate-800 text-sm truncate pr-6">{job.title}</h3>
+                 <p className="text-xs font-medium text-slate-500 flex items-center">
+                   {job.company} 
+                   {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">External</span>}
+                 </p>
+                 <div className="flex items-center text-xs text-slate-400 mt-1.5 mb-2">
+                   <Globe className="w-3 h-3 mr-1" /> {job.location}
+                   <span className="mx-2 text-slate-200">|</span>
+                   <span className="text-emerald-600 font-bold">{job.salary}</span>
+                 </div>
+                 {/* Description Snippet */}
+                 {job.description && (
+                   <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-3">{job.description}</p>
+                 )}
+                 {/* Apply Button */}
+                 {job.externalLink ? (
+                    <a href={job.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition">Apply Now <ExternalLink className="w-3 h-3 ml-1.5" /></a>
+                 ) : (
+                    <button className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg cursor-not-allowed">Apply on Site</button>
+                 )}
+               </div>
+             </div>
           </div>
         ))}
       </div>
@@ -562,7 +590,7 @@ const LibraryView = ({ data }) => {
   );
 };
 
-// --- Other Views (Jobs, Tools) ---
+// --- Other Views (Home, Jobs, Tools) ---
 const JobsView = ({ jobs }) => (
   <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
     <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
