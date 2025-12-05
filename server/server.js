@@ -25,9 +25,9 @@ if (MONGO_URI) {
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 }
 
-// --- SCHEMAS (RailOps 2.0 Upgrade) ---
+// --- SCHEMAS (Complete Platform Schema) ---
 
-// 1. USER SCHEMA
+// 1. USER & CREW
 const UserSchema = new mongoose.Schema({
   clerkId: { type: String, required: true, unique: true },
   email: String,
@@ -36,35 +36,48 @@ const UserSchema = new mongoose.Schema({
   headline: String, location: String, about: String,
   companyName: String, jobTitle: String,
   experience: [{ title: String, company: String, dates: String }],
+  education: [{ school: String, degree: String, dates: String }],
+  skills: [String],
   createdAt: { type: Date, default: Date.now }
 });
 
-// 2. CREW MEMBER SCHEMA (Linked to User)
 const CrewSchema = new mongoose.Schema({
   name: String,
-  email: String,          // Link to User Account
-  role: String,           // "Conductor", "Engineer"
-  status: String,         // "Available", "Resting", "On Duty"
+  email: String,          
+  role: String,           
+  status: String,         
   company: String,
-  certification: String,
-  serviceHours: { type: Number, default: 0 } // For tracking legal limits
+  certification: String
 });
 
-// 3. SCHEDULE SCHEMA (Operations)
+// 2. OPERATIONS
 const ScheduleSchema = new mongoose.Schema({
   trainId: String,
   origin: String,
   destination: String,
-  departureTime: Date,    // Changed to Date for sorting
-  arrivalTime: Date,      // For 12-month planning
-  status: String,         // "Scheduled", "En Route", "Completed", "History"
+  departureTime: Date,    
+  arrivalTime: Date,      
+  status: String,         
   company: String,
-  assignedCrew: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Crew' }],
-  notes: String
+  assignedCrew: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Crew' }]
 });
 
-// Standard Schemas
-const JobSchema = new mongoose.Schema({ title: String, company: String, location: String, salary: String, category: String, tags: [String], postedAt: { type: Date, default: Date.now }, externalLink: String, description: String, logo: String, jobType: String });
+// 3. JOB BOARD
+const JobSchema = new mongoose.Schema({
+  title: String,
+  company: String,
+  location: String,
+  salary: String,
+  category: String,
+  tags: [String],
+  postedAt: { type: Date, default: Date.now },
+  externalLink: String,
+  description: String,
+  logo: String,
+  jobType: String
+});
+
+// 4. LIBRARY (The missing 404 routes)
 const GlossarySchema = new mongoose.Schema({ term: String, def: String, hasVisual: Boolean, visualTag: String, videoUrl: String });
 const StandardSchema = new mongoose.Schema({ code: String, title: String, description: String, agency: String, url: String });
 const ManualSchema = new mongoose.Schema({ title: String, category: String, version: String, url: String });
@@ -85,22 +98,25 @@ const Mandate = mongoose.model('Mandate', MandateSchema);
 
 // --- API ENDPOINTS ---
 
-// RailOps: Get Operations Data
+// LIBRARY ROUTES (Fixes 404s)
+app.get('/api/standards', async (req, res) => res.json(await Standard.find()));
+app.get('/api/manuals', async (req, res) => res.json(await Manual.find()));
+app.get('/api/regulations', async (req, res) => res.json(await Regulation.find()));
+app.get('/api/mandates', async (req, res) => res.json(await Mandate.find()));
+app.get('/api/glossary', async (req, res) => res.json(await Glossary.find().sort({ term: 1 })));
+app.get('/api/signals', async (req, res) => res.json(await Signal.find()));
+
+// JOB ROUTES
+app.get('/api/jobs', async (req, res) => res.json(await Job.find().sort({ postedAt: -1 })));
+
+// RAILOPS ROUTES
 app.get('/api/crew', async (req, res) => res.json(await Crew.find()));
-// Get Active vs History Schedules
 app.get('/api/schedules', async (req, res) => {
   const { type } = req.query;
-  let filter = {};
-  if (type === 'history') {
-    filter = { status: 'History' };
-  } else {
-    filter = { status: { $ne: 'History' } };
-  }
+  const filter = type === 'history' ? { status: 'History' } : { status: { $ne: 'History' } };
   const schedules = await Schedule.find(filter).populate('assignedCrew').sort({ departureTime: 1 });
   res.json(schedules);
 });
-
-// RailOps: Assign Crew to Train
 app.post('/api/schedules/:id/assign', async (req, res) => {
   try {
     const { crewId } = req.body;
@@ -108,29 +124,22 @@ app.post('/api/schedules/:id/assign', async (req, res) => {
     if (!schedule.assignedCrew.includes(crewId)) {
       schedule.assignedCrew.push(crewId);
       await schedule.save();
-      
-      // Update Crew Status
       await Crew.findByIdAndUpdate(crewId, { status: 'On Duty' });
     }
     res.json(schedule);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Personal Profile: Get My Assignments
+// USER ROUTES
 app.get('/api/my-assignments', async (req, res) => {
   const { email } = req.query;
   if (!email) return res.json([]);
-  
-  // 1. Find Crew ID for this email
   const crewMember = await Crew.findOne({ email });
   if (!crewMember) return res.json([]);
-
-  // 2. Find Schedules where this Crew ID is assigned
   const mySchedules = await Schedule.find({ assignedCrew: crewMember._id }).sort({ departureTime: 1 });
   res.json(mySchedules);
 });
 
-// Standard User Routes
 app.post('/api/users/sync', async (req, res) => {
   const { clerkId, email, fullName } = req.body;
   if (!clerkId) return res.status(400).json({ error: "Missing Clerk ID" });
@@ -147,16 +156,17 @@ app.put('/api/users/:clerkId', async (req, res) => {
   try { const user = await User.findOneAndUpdate({ clerkId: req.params.clerkId }, { $set: req.body }, { new: true }); res.json(user); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Data Read/Write
-app.get('/api/jobs', async (req, res) => res.json(await Job.find().sort({ postedAt: -1 })));
-app.get('/api/glossary', async (req, res) => res.json(await Glossary.find()));
-// (Omitting other getters for brevity, they remain same)
-
+// WRITE ENDPOINTS
 const createHandler = (Model) => async (req, res) => {
   try { const doc = new Model(req.body); await doc.save(); res.status(201).json(doc); } 
   catch (err) { res.status(400).json({ error: err.message }); }
 };
 app.post('/api/jobs', createHandler(Job));
+app.post('/api/glossary', createHandler(Glossary));
+app.post('/api/standards', createHandler(Standard));
+app.post('/api/manuals', createHandler(Manual));
+app.post('/api/regulations', createHandler(Regulation));
+app.post('/api/mandates', createHandler(Mandate));
 app.post('/api/crew', createHandler(Crew));
 app.post('/api/schedules', createHandler(Schedule));
 

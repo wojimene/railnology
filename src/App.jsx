@@ -3,7 +3,7 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Clock, Calendar, Users, AlertCircle, History
 } from 'lucide-react';
 
 // ==========================================
@@ -32,7 +32,7 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
-// --- MARKET RATE DATA (Simulated Public Research) ---
+// --- MARKET RATE DATA ---
 const MARKET_RATES = {
   "conductor": "$60k - $85k (Mkt Est.)",
   "engineer": "$75k - $110k (Mkt Est.)",
@@ -67,7 +67,7 @@ const getCompensation = (job) => {
 const formatDate = (dateString) => {
   if (!dateString) return "TBD";
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "Pending"; // Handle invalid dates gracefully
+  if (isNaN(date.getTime())) return "Pending"; 
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
@@ -77,10 +77,6 @@ const FALLBACK_JOBS = [
 ];
 const FALLBACK_GLOSSARY = [
   { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
-];
-const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
-const FALLBACK_SIGNALS = [
-  { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
 ];
 
 // --- Components ---
@@ -125,7 +121,6 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           {/* ✅ Explicit Profile Button */}
            <button 
              onClick={onProfileClick} 
              className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
@@ -146,33 +141,14 @@ const SectionTitle = ({ title, subtitle }) => (
   </div>
 );
 
-// --- HELPER: Job Logo Component ---
 const JobLogo = ({ logo, company, size="sm" }) => {
   const [error, setError] = useState(false);
   const dims = size === "lg" ? "w-16 h-16 p-2" : "w-12 h-12 p-1";
   const iconSize = size === "lg" ? "w-8 h-8" : "w-6 h-6";
-
-  if (!logo || error) {
-    return (
-      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}>
-        <Train className={`${iconSize} text-amber-500`} />
-      </div>
-    );
-  }
-
-  return (
-    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}>
-      <img 
-        src={logo} 
-        alt={company} 
-        className="w-full h-full object-contain rounded-md" 
-        onError={() => setError(true)} 
-      />
-    </div>
-  );
+  if (!logo || error) return <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}><Train className={`${iconSize} text-amber-500`} /></div>;
+  return <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}><img src={logo} alt={company} className="w-full h-full object-contain rounded-md" onError={() => setError(true)} /></div>;
 };
 
-// --- REUSABLE JOB CARD ---
 const JobCard = ({ job, onClick }) => (
   <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
     <div className="flex justify-between items-start gap-3">
@@ -754,7 +730,6 @@ const HomeView = ({ changeTab, jobs, onJobClick }) => (
         <button onClick={() => changeTab('jobs')} className="text-xs font-bold text-amber-600 flex items-center mb-5">View All <ArrowRight className="w-3 h-3 ml-1" /></button>
       </div>
       <div className="space-y-3">
-        {/* Use reusable JobCard here */}
         {jobs.slice(0, 3).map((job, idx) => (
           <JobCard key={idx} job={job} onClick={onJobClick} />
         ))}
@@ -1001,7 +976,7 @@ const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
 // --- MAIN APP COMPONENT ---
 const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null); // Tracks full page job detail
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState({ jobs: [], glossary: [], standards: [], manuals: [], regulations: [], mandates: [], signals: [] });
