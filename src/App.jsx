@@ -10,21 +10,20 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// ✅ REAL CLERK (PRODUCTION):
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// ✅ PRODUCTION CONFIG:
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
+
+const API_URL = import.meta.env.VITE_API_URL;
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-
-// Safety Check
-if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -108,7 +107,7 @@ const SectionTitle = ({ title, subtitle }) => (
   </div>
 );
 
-// --- Helper: Job Logo Component ---
+// --- HELPER: Job Logo Component ---
 const JobLogo = ({ logo, company }) => {
   const [error, setError] = useState(false);
 
@@ -192,7 +191,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
       if (res.ok) {
         setStatus('success');
         setForm({ title: '', location: '', salary: '', category: 'Field' });
-        refreshData(); 
+        refreshData(); // Refresh global data
         const newJob = await res.json();
         setJobs([newJob, ...jobs]);
       } else {
@@ -203,6 +202,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
 
   return (
     <div className="pb-20 bg-slate-50 min-h-full">
+       {/* Company Cover */}
        <div className="h-24 bg-gradient-to-r from-slate-800 to-slate-900 relative">
           <div className="absolute -bottom-8 left-4 flex items-end">
              <div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg">
@@ -217,9 +217,16 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
           </div>
        </div>
        
+       {/* Tab Nav */}
        <div className="mt-10 px-4 border-b border-slate-200 flex space-x-6 text-sm font-medium text-slate-500">
           {['Overview', 'Jobs', 'People'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>
+            <button 
+              key={tab} 
+              onClick={() => setActiveTab(tab.toLowerCase())}
+              className={`pb-2 ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}
+            >
+              {tab}
+            </button>
           ))}
        </div>
 
@@ -238,7 +245,9 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
                </div>
                
                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
-                  <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center"><PlusCircle className="w-4 h-4 mr-2 text-amber-500" /> Post a New Job</h3>
+                  <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
+                    <PlusCircle className="w-4 h-4 mr-2 text-amber-500" /> Post a New Job
+                  </h3>
                   <div className="space-y-3">
                      <input placeholder="Job Title" className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
                      <div className="flex gap-2">
@@ -246,12 +255,48 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
                         <input placeholder="Salary" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} />
                      </div>
                      <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                        <option>Field</option><option>Engineering</option><option>Management</option><option>Office</option>
+                        <option>Field</option>
+                        <option>Engineering</option>
+                        <option>Management</option>
+                        <option>Office</option>
                      </select>
                      <button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Post Job</button>
                      {status === 'success' && <p className="text-emerald-600 text-xs font-bold mt-2 text-center">Job Posted Successfully!</p>}
                   </div>
                </div>
+            </div>
+         )}
+
+         {activeTab === 'jobs' && (
+            <div className="space-y-2">
+              {jobs.map(job => (
+                 <div key={job._id || Math.random()} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-center">
+                    <div>
+                       <div className="font-bold text-slate-700 text-sm">{job.title}</div>
+                       <div className="text-xs text-slate-400">{job.location} • {job.salary}</div>
+                    </div>
+                    <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded border border-emerald-100">Active</div>
+                 </div>
+              ))}
+              {jobs.length === 0 && <div className="text-center text-slate-400 text-xs py-4 italic border-2 border-dashed border-slate-100 rounded-lg">No active jobs. Post one above!</div>}
+            </div>
+         )}
+
+         {activeTab === 'people' && (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+               <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800 text-xs">Employee Directory</h3>
+                  <button className="text-[10px] text-indigo-600 font-bold hover:underline">Invite +</button>
+               </div>
+               {[1,2].map(i => (
+                 <div key={i} className="p-3 border-b border-slate-100 last:border-0 flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 mr-3 flex items-center justify-center text-slate-400 text-[10px] font-bold">E{i}</div>
+                    <div>
+                       <div className="text-xs font-bold text-slate-700">Employee {i}</div>
+                       <div className="text-[10px] text-slate-400">Staff</div>
+                    </div>
+                 </div>
+               ))}
             </div>
          )}
        </div>
@@ -262,42 +307,70 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
 // --- PROFILE VIEW ---
 const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ role: 'individual', companyName: '', jobTitle: '', headline: '', location: '', about: '' });
-  const [experience, setExperience] = useState([{ id: 1, title: "Senior Conductor", company: "Amtrak", dates: "2018 - Present" }]);
+  const [formData, setFormData] = useState({ 
+    role: 'individual', companyName: '', jobTitle: '', headline: '', location: '', about: '' 
+  });
+  
+  const [experience, setExperience] = useState([
+     { id: 1, title: "Senior Conductor", company: "Amtrak", dates: "2018 - Present" }
+  ]);
 
   useEffect(() => {
     if (mongoUser) {
-      setFormData(prev => ({ ...prev, role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }));
+      setFormData(prev => ({
+        ...prev,
+        role: mongoUser.role || 'individual',
+        companyName: mongoUser.companyName || '',
+        jobTitle: mongoUser.jobTitle || ''
+      }));
     }
   }, [mongoUser]);
 
   const handleSave = async () => {
     try {
-      const res = await fetch(`${API_URL}/users/${user.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      const res = await fetch(`${API_URL}/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
       if (res.ok) { setIsEditing(false); refreshProfile(); }
     } catch (err) { console.error("Failed to update profile", err); }
   };
 
+  const addExperience = () => {
+     const title = prompt("Job Title:");
+     if(title) setExperience([...experience, { id: Date.now(), title, company: "New Company", dates: "2024 - Present" }]);
+  };
+
   return (
     <div className="pb-20 bg-slate-50 min-h-full">
+       {/* Profile Banner & Header */}
        <div className="bg-white border-b border-slate-200 pb-6 mb-4">
           <div className={`h-24 ${formData.role === 'company' ? 'bg-slate-900' : 'bg-gradient-to-r from-sky-500 to-indigo-500'} relative`}></div>
           <div className="px-4 -mt-10 relative">
              <div className="flex justify-between items-end">
                 <img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white shadow-md" />
                 {!isEditing && (
-                  <button onClick={() => setIsEditing(true)} className="mb-2 flex items-center text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition"><Edit3 className="w-3 h-3 mr-1.5" /> Edit Profile</button>
+                  <button onClick={() => setIsEditing(true)} className="mb-2 flex items-center text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition">
+                     <Edit3 className="w-3 h-3 mr-1.5" /> Edit Profile
+                  </button>
                 )}
              </div>
              <div className="mt-3">
                 <h2 className="text-xl font-bold text-slate-900">{user.fullName}</h2>
                 <p className="text-sm text-slate-600">{formData.headline || (formData.role === 'company' ? 'Railroad Operations Company' : 'Rail Industry Professional')}</p>
-                <div className="flex items-center text-xs text-slate-400 mt-1"><MapPin className="w-3 h-3 mr-1" /> {formData.location || "New York, USA"}</div>
+                <div className="flex items-center text-xs text-slate-400 mt-1">
+                   <MapPin className="w-3 h-3 mr-1" /> {formData.location || "New York, USA"}
+                   <span className="mx-2">•</span>
+                   <span className="text-indigo-600 font-bold cursor-pointer hover:underline">Contact Info</span>
+                </div>
              </div>
           </div>
        </div>
 
        <div className="px-4 space-y-4">
+          
+          {/* Account Settings Card */}
           {isEditing && (
             <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
                 <h4 className="font-bold text-slate-900 text-sm mb-4">Edit Intro</h4>
@@ -309,7 +382,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
                       </select>
                    </div>
                    {formData.role === 'individual' ? (
-                      <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" placeholder="Headline" value={formData.headline} onChange={e => setFormData({...formData, headline: e.target.value})} />
+                      <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" placeholder="Headline (e.g. Signal Engineer)" value={formData.headline} onChange={e => setFormData({...formData, headline: e.target.value})} />
                    ) : (
                       <input className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" placeholder="Company Name" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
                    )}
@@ -321,16 +394,22 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
             </div>
           )}
 
+          {/* About Section */}
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-             <h3 className="font-bold text-slate-900 text-sm mb-2">About</h3>
-             <p className="text-xs text-slate-600 leading-relaxed">{formData.about || "Passionate rail industry professional with experience in signaling and operations."}</p>
+             <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-slate-900 text-sm">About</h3>
+             </div>
+             <p className="text-xs text-slate-600 leading-relaxed">
+               {formData.about || "Passionate rail industry professional with experience in signaling and operations. Focused on safety and efficiency."}
+             </p>
           </div>
 
+          {/* Experience Section (Only for Individuals) */}
           {formData.role === 'individual' && (
              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
                    <h3 className="font-bold text-slate-900 text-sm">Experience</h3>
-                   <button><Plus className="w-4 h-4 text-slate-400 hover:text-indigo-600" /></button>
+                   <button onClick={addExperience}><Plus className="w-4 h-4 text-slate-400 hover:text-indigo-600" /></button>
                 </div>
                 <div className="space-y-4">
                    {experience.map((exp, i) => (
@@ -341,6 +420,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
                             <p className="text-xs text-slate-600">{exp.company}</p>
                             <p className="text-[10px] text-slate-400 mt-1">{exp.dates}</p>
                          </div>
+                         {isEditing && <button onClick={() => setExperience(experience.filter(e => e.id !== exp.id))}><Trash2 className="w-3 h-3 text-red-300 hover:text-red-500" /></button>}
                       </div>
                    ))}
                 </div>
@@ -417,9 +497,7 @@ const HomeView = ({ changeTab, jobs }) => (
         {jobs.slice(0, 3).map((job, idx) => (
           <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition relative overflow-hidden">
              <div className="flex justify-between items-start gap-3">
-               {/* Logo Section */}
                <JobLogo logo={job.logo} company={job.company} />
-               
                <div className="flex-1 min-w-0">
                  <h3 className="font-bold text-slate-800 text-sm truncate pr-6">{job.title}</h3>
                  <p className="text-xs font-medium text-slate-500 flex items-center">
@@ -431,11 +509,9 @@ const HomeView = ({ changeTab, jobs }) => (
                    <span className="mx-2 text-slate-200">|</span>
                    <span className="text-emerald-600 font-bold">{job.salary}</span>
                  </div>
-                 {/* Description Snippet */}
                  {job.description && (
                    <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-3">{job.description}</p>
                  )}
-                 {/* Apply Button */}
                  {job.externalLink ? (
                     <a 
                       href={job.externalLink} 
@@ -457,7 +533,52 @@ const HomeView = ({ changeTab, jobs }) => (
   </div>
 );
 
-// --- EXPANDED LIBRARY VIEW ---
+// --- JOBS VIEW ---
+const JobsView = ({ jobs }) => (
+  <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
+    <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
+    <div className="space-y-3">
+      {jobs.map((job) => (
+        <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden">
+          <div className="flex justify-between items-start gap-3">
+            <JobLogo logo={job.logo} company={job.company} />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-800 text-sm truncate pr-6">{job.title}</h3>
+              <p className="text-xs font-medium text-slate-500 flex items-center">
+                {job.company} 
+                {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">External</span>}
+              </p>
+              <div className="flex items-center text-xs text-slate-400 mt-1.5 mb-2">
+                <Globe className="w-3 h-3 mr-1" /> {job.location}
+                <span className="mx-2 text-slate-200">|</span>
+                <span className="text-emerald-600 font-bold">{job.salary}</span>
+              </div>
+              
+              {job.description && (
+                <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-3">{job.description}</p>
+              )}
+
+              {job.externalLink ? (
+                 <a 
+                   href={job.externalLink} 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   className="inline-flex items-center text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
+                 >
+                   Apply Now <ExternalLink className="w-3 h-3 ml-1.5" />
+                 </a>
+              ) : (
+                 <button className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg cursor-not-allowed">Apply on Site</button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// --- LIBRARY VIEW ---
 const LibraryView = ({ data }) => {
   const [activeSubTab, setActiveSubTab] = useState('glossary');
   const [term, setTerm] = useState('');
@@ -592,53 +713,6 @@ const LibraryView = ({ data }) => {
   );
 };
 
-// --- Other Views (Home, Jobs, Tools) ---
-const JobsView = ({ jobs }) => (
-  <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-    <SectionTitle title="Career Opportunities" subtitle="Find your next role." />
-    <div className="space-y-3">
-      {jobs.map((job) => (
-        <div key={job._id || job.id || Math.random()} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden">
-          <div className="flex justify-between items-start gap-3">
-            {/* Logo Section */}
-            <JobLogo logo={job.logo} company={job.company} />
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-slate-800 text-sm truncate pr-6">{job.title}</h3>
-              <p className="text-xs font-medium text-slate-500 flex items-center">
-                {job.company} 
-                {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">External</span>}
-              </p>
-              <div className="flex items-center text-xs text-slate-400 mt-1.5 mb-2">
-                <Globe className="w-3 h-3 mr-1" /> {job.location}
-                <span className="mx-2 text-slate-200">|</span>
-                <span className="text-emerald-600 font-bold">{job.salary}</span>
-              </div>
-              
-              {job.description && (
-                <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 mb-3">{job.description}</p>
-              )}
-
-              {job.externalLink ? (
-                 <a 
-                   href={job.externalLink} 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   className="inline-flex items-center text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
-                 >
-                   Apply Now <ExternalLink className="w-3 h-3 ml-1.5" />
-                 </a>
-              ) : (
-                 <button className="text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg cursor-not-allowed">Apply on Site</button>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
 const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
   <div className="pb-20 bg-slate-50 min-h-full px-4 pt-6">
     <SectionTitle title="Engineer's Toolkit" subtitle="Field utilities." />
@@ -693,7 +767,7 @@ const MainContent = () => {
       const [jobs, glossary, signals, standards, manuals, regulations, mandates] = await Promise.all(results.map(r => r.json()));
       
       setData({ jobs, glossary, signals, standards, manuals, regulations, mandates });
-    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_GLOSSARY, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
+    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_SIGNALS, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -764,4 +838,5 @@ const MainContent = () => {
   );
 };
 
+const App = () => (<ClerkProvider publishableKey={CLERK_KEY}><MainContent /></ClerkProvider>);
 export default App;
