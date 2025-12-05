@@ -10,19 +10,21 @@ import {
 // 1. AUTHENTICATION SETUP
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
- import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ✅ REAL CLERK (PRODUCTION):
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-
+// ✅ PRODUCTION CONFIG:
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
 const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+// Safety Check
+if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
 
 // --- Branding Constants ---
 const BRAND = {
@@ -118,7 +120,6 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           {/* ✅ Explicit Profile Button */}
            <button 
              onClick={onProfileClick} 
              className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
@@ -164,6 +165,36 @@ const JobLogo = ({ logo, company, size="sm" }) => {
     </div>
   );
 };
+
+// --- REUSABLE JOB CARD (Defined BEFORE it is used) ---
+const JobCard = ({ job, onClick }) => (
+  <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
+    <div className="flex justify-between items-start gap-3">
+      <JobLogo logo={job.logo} company={job.company} />
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-slate-800 text-sm truncate pr-6 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
+        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">
+          {job.company} 
+          {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}
+        </p>
+        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2">
+          <Globe className="w-3 h-3 mr-1" /> {job.location}
+          <span className="mx-2 text-slate-200">|</span>
+          <span className="text-emerald-600 font-bold">{getCompensation(job)}</span>
+        </div>
+        <div className="flex gap-2 mt-2">
+            <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>
+            {job.externalLink && (
+              <div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">
+                Apply <ExternalLink className="w-2.5 h-2.5 ml-1" />
+              </div>
+            )}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 
 // --- Paywall Component ---
 const PaywallModal = ({ onClose }) => {
@@ -625,329 +656,4 @@ const JobDetailView = ({ job, onBack }) => {
           <p className="text-sm font-medium text-slate-500">{job.company}</p>
           <div className="flex items-center justify-center mt-3 space-x-2 text-xs">
              <span className="flex items-center text-slate-600 bg-slate-100 px-2 py-1 rounded"><Globe className="w-3 h-3 mr-1" /> {job.location}</span>
-             <span className="flex items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold border border-emerald-100">{compensation}</span>
-          </div>
-          {job.jobType && <span className="mt-2 text-[10px] text-slate-400 uppercase tracking-wider font-bold">{job.jobType}</span>}
-        </div>
-
-        {job.externalLink ? (
-           <a href={job.externalLink} target="_blank" rel="noreferrer" className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-slate-800 flex items-center justify-center mb-6 transition">Apply Now <ExternalLink className="w-3 h-3 ml-2" /></a>
-        ) : <button disabled className="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold text-sm mb-6 cursor-not-allowed">Application Unavailable</button>}
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-           <div>
-             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">About The Job</h3>
-             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                {/* Display FULL description if available */}
-                {job.description || "No description available."}
-             </p>
-           </div>
-           {job.tags && job.tags.length > 0 && (
-             <div>
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tags</h3>
-               <div className="flex flex-wrap gap-2">
-                  {job.tags.map((tag, i) => <span key={i} className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded border border-slate-200">{tag}</span>)}
-               </div>
-             </div>
-           )}
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex items-center justify-between safe-area-pb z-50">
-         <div className="text-xs font-medium text-slate-500">Ready to apply?</div>
-         {job.externalLink && (
-            <a href={job.externalLink} target="_blank" rel="noreferrer" className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold text-xs shadow transition">Start Application</a>
-         )}
-      </div>
-    </div>
-  );
-};
-
-// --- EXPANDED LIBRARY VIEW ---
-const LibraryView = ({ data }) => {
-  const [activeSubTab, setActiveSubTab] = useState('glossary');
-  const [term, setTerm] = useState('');
-
-  // Sub-tabs configuration
-  const tabs = [
-    { id: 'glossary', label: 'Glossary', icon: BookOpen, data: data.glossary },
-    { id: 'standards', label: 'Standards', icon: Scale, data: data.standards },
-    { id: 'manuals', label: 'Manuals', icon: FileText, data: data.manuals },
-    { id: 'regulations', label: 'Regs', icon: Shield, data: data.regulations },
-    { id: 'mandates', label: 'Mandates', icon: ScrollText, data: data.mandates },
-  ];
-
-  const activeData = tabs.find(t => t.id === activeSubTab)?.data || [];
-  
-  const filtered = useMemo(() => 
-    activeData.filter(item => {
-      const searchStr = (item.term || item.title || item.code || '').toLowerCase();
-      return searchStr.includes(term.toLowerCase());
-    }),
-  [term, activeData]);
-
-  // Media Card Logic
-  const MediaCard = ({ item }) => {
-    const getYoutubeId = (url) => {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = url?.match(regExp);
-      return (match && match[2].length === 11) ? match[2] : null;
-    };
-
-    const videoId = getYoutubeId(item.videoUrl);
-
-    return (
-      <div className="mt-3 bg-slate-50 rounded-lg border border-slate-200 p-3">
-        {item.hasVisual && (
-          <div className="mb-3">
-            <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-              <Eye className="w-3 h-3 mr-1.5" /> Visual Reference
-            </div>
-            <div className="bg-white p-2 rounded border border-dashed border-slate-300 flex flex-col items-center justify-center text-center overflow-hidden min-h-[150px] relative">
-              {/* ✅ Relaxed Check: Allows local paths AND urls */}
-              {item.visualTag ? (
-                <img 
-                  src={item.visualTag} 
-                  alt={item.term} 
-                  className="w-full h-auto max-h-48 object-contain rounded"
-                  onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/300x150?text=Image+Unavailable"; }}
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="text-slate-400 text-xs italic py-4">No schematic available.</div>
-              )}
-            </div>
-          </div>
-        )}
-        {videoId && (
-          <div>
-             <div className="flex items-center text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-              <Video className="w-3 h-3 mr-1.5" /> Video Lesson
-            </div>
-            <div className="bg-black rounded-lg overflow-hidden aspect-video shadow-sm">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src={`https://www.youtube.com/embed/${videoId}`} 
-                title={item.term} 
-                frameBorder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowFullScreen
-              ></iframe>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div className="pb-20 px-4 pt-6 bg-slate-50 min-h-full">
-      <SectionTitle title="Industry Library" subtitle="The comprehensive knowledge base." />
-      
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <input type="text" placeholder="Search library..." className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={term} onChange={(e) => setTerm(e.target.value)} />
-        <Search className="w-5 h-5 text-slate-400 absolute left-3 top-3.5 opacity-0" />
-      </div>
-
-      {/* Sub-Navigation */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-        {tabs.map(t => (
-          <button 
-            key={t.id} 
-            onClick={() => setActiveSubTab(t.id)}
-            className={`flex items-center px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition ${activeSubTab === t.id ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-500 border border-slate-200'}`}
-          >
-            <t.icon className="w-3 h-3 mr-1.5" /> {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content List */}
-      <div className="space-y-3">
-        {filtered.length > 0 ? filtered.map((item, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-start mb-1">
-              <h3 className="font-bold text-sm text-slate-900">{item.term || item.title}</h3>
-              {item.code && <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-mono">{item.code}</span>}
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
-              {item.def || item.description || item.summary || "No description available."}
-            </p>
-            {/* Visuals for Glossary */}
-            {activeSubTab === 'glossary' && (item.hasVisual || item.videoUrl) && <MediaCard item={item} />}
-            
-            {/* Metadata for others */}
-            {activeSubTab !== 'glossary' && (
-              <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-400">
-                {item.agency && <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{item.agency}</span>}
-                {item.version && <span>Ver: {item.version}</span>}
-                {item.deadline && <span className="text-red-400 font-bold">Deadline: {item.deadline}</span>}
-                {item.url && item.url !== '#' && <a href={item.url} target="_blank" rel="noreferrer" className="text-amber-600 font-bold hover:underline">View Source &rarr;</a>}
-              </div>
-            )}
-          </div>
-        )) : (
-          <div className="text-center p-8 text-slate-400 text-xs italic border-2 border-dashed border-slate-200 rounded-xl">
-            No entries found in {tabs.find(t => t.id === activeSubTab).label}.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
-  <div className="pb-20 bg-slate-50 min-h-full px-4 pt-6">
-    <SectionTitle title="Engineer's Toolkit" subtitle="Field utilities." />
-    
-    {/* Free Tool: Signal Decoder */}
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-4">
-      <div className="flex items-center space-x-2 mb-4">
-        <AlertTriangle className="w-5 h-5 text-amber-500" />
-        <h3 className="font-bold text-slate-800">Signal Decoder</h3>
-      </div>
-      {/* Simple Visualizer */}
-      <div className="flex gap-4">
-          <div className="bg-slate-800 p-2 rounded-full w-8 flex flex-col gap-2 items-center">
-             <div className="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]"></div>
-             <div className="w-4 h-4 rounded-full bg-slate-600"></div>
-             <div className="w-4 h-4 rounded-full bg-slate-600"></div>
-          </div>
-          <div>
-             <div className="text-sm font-bold text-slate-700">Stop Signal</div>
-             <p className="text-xs text-slate-500 mt-1">Indication: Stop.</p>
-          </div>
-      </div>
-    </div>
-
-    {/* Locked Tool: Curve Resistance Calculator */}
-    <div className="relative bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-2">
-           <Calculator className="w-5 h-5 text-indigo-600" />
-           <h3 className="font-bold text-slate-800">Curve Resistance</h3>
-        </div>
-        {!isPro && <Lock className="w-4 h-4 text-amber-600" />}
-      </div>
-      
-      <CurveResistanceCalculator isPro={isPro} />
-      
-      {!isPro && (
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex items-center justify-center rounded-xl">
-          <button onClick={onUnlock} className="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center transition transform hover:scale-105">
-            <Unlock className="w-3 h-3 mr-2" /> Unlock Calculator
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-// --- MAIN APP COMPONENT ---
-const MainContent = () => {
-  const [activeTab, setActiveTab] = useState('home');
-  const [selectedJob, setSelectedJob] = useState(null); // Tracks full page job detail
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [data, setData] = useState({ jobs: [], glossary: [], standards: [], manuals: [], regulations: [], mandates: [], signals: [] });
-  const [isPro, setIsPro] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [mongoUser, setMongoUser] = useState(null);
-  const { user, isSignedIn } = useUser();
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 60000));
-      const results = await Promise.race([
-        Promise.all([
-          fetch(`${API_URL}/jobs`), fetch(`${API_URL}/glossary`), fetch(`${API_URL}/signals`),
-          fetch(`${API_URL}/standards`), fetch(`${API_URL}/manuals`), fetch(`${API_URL}/regulations`), fetch(`${API_URL}/mandates`)
-        ]),
-        timeoutPromise
-      ]);
-      
-      // Parse all results safely
-      const [jobs, glossary, signals, standards, manuals, regulations, mandates] = await Promise.all(results.map(r => r.json()));
-      
-      setData({ jobs, glossary, signals, standards, manuals, regulations, mandates });
-    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_GLOSSARY, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  useEffect(() => {
-    if (isSignedIn && user) {
-      fetch(`${API_URL}/users/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clerkId: user.id, email: user.primaryEmailAddress.emailAddress }) })
-      .then(res => res.json()).then(userData => setMongoUser(userData)).catch(err => console.error("User Sync Error:", err));
-    }
-  }, [isSignedIn, user]);
-
-  // Admin View Placeholder (Use your existing one locally)
-  const AdminView = ({ refreshData }) => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel (See local code for full view)</div>;
-  
-  const ADMIN_EMAIL = "wayne@railnology.com"; 
-  const isSuperAdmin = isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL;
-
-  // Render Detail View if a job is selected
-  if (selectedJob) {
-    return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-200 flex items-center justify-center font-sans">
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-      <div className="w-full max-w-md h-full min-h-screen bg-slate-50 shadow-2xl relative flex flex-col">
-        <Header onProfileClick={() => setActiveTab('profile')} isOffline={false} isPro={isPro} />
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {activeTab === 'home' && isSuperAdmin && <AdminView refreshData={fetchData} isOffline={false} />}
-          
-          {/* Company View: Only show if user role is company */}
-          {activeTab === 'company' && mongoUser?.role === 'company' ? (
-             <CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} />
-          ) : null}
-          
-          {/* Profile Tab */}
-          {activeTab === 'profile' && isSignedIn ? (
-             <ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => { 
-               // Refresh logic: refetch the specific user to update state
-                if (isSignedIn && user) {
-                  fetch(`${API_URL}/users/${user.id}`)
-                  .then(res => res.json()).then(userData => setMongoUser(userData)).catch(err => console.error("User Refresh Error:", err));
-                }
-             }} />
-          ) : (
-             // Standard Tab Views
-             activeTab !== 'company' && activeTab !== 'profile' && (
-              loading ? <LoadingScreen /> : error ? <ErrorScreen msg={error} /> : (
-                <>
-                  {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />}
-                  {activeTab === 'learn' && <LibraryView data={data} />}
-                  {activeTab === 'tools' && <ToolsView isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
-                  {activeTab === 'jobs' && <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />} 
-                </>
-              )
-            )
-          )}
-        </div>
-        <div className="bg-white border-t border-slate-200 px-4 pb-safe sticky bottom-0 z-50">
-          <div className="flex justify-between items-center h-16">
-            <TabButton active={activeTab} id="home" icon={Train} label="Home" onClick={setActiveTab} />
-            <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
-            <TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />
-            <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
-            {/* Dynamic Dashboard Button for Companies */}
-            {mongoUser?.role === 'company' && (
-              <TabButton active={activeTab} id="company" icon={LayoutDashboard} label="Dash" onClick={setActiveTab} />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const App = () => (<ClerkProvider publishableKey={CLERK_KEY}><MainContent /></ClerkProvider>);
-export default App;
+             <span className="flex items-center text-emerald-7
