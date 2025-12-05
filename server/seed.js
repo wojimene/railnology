@@ -14,7 +14,7 @@ if (!MONGO_URI) { console.error("❌ MONGO_URI missing in .env"); process.exit(1
 
 // --- SCHEMAS (Must match server.js) ---
 const CrewSchema = new mongoose.Schema({ name: String, role: String, status: String, company: String, certification: String });
-const ScheduleSchema = new mongoose.Schema({ trainId: String, origin: String, destination: String, departureTime: String, status: String, company: String, assignedCrew: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Crew' }] });
+const ScheduleSchema = new mongoose.Schema({ trainId: String, origin: String, destination: String, departureTime: Date, arrivalTime: Date, status: String, company: String, assignedCrew: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Crew' }] });
 
 const GlossarySchema = new mongoose.Schema({ term: String, def: String, hasVisual: Boolean, visualTag: String, videoUrl: String });
 const JobSchema = new mongoose.Schema({ title: String, company: String, location: String, salary: String, category: String, tags: [String], postedAt: { type: Date, default: Date.now }, externalLink: String, description: String, logo: String, jobType: String });
