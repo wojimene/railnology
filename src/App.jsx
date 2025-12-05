@@ -41,7 +41,7 @@ const MARKET_RATES = {
   "manager": "$95k - $130k (Mkt Est.)"
 };
 
-// --- HELPER: Formats ---
+// --- HELPER: Salary Formatter ---
 const formatSalary = (val) => {
   if (!val) return "DOE";
   if (val === "Competitive" || val === "DOE") return val;
@@ -79,6 +79,7 @@ const FALLBACK_MANUALS = [];
 const FALLBACK_REGULATIONS = [];
 const FALLBACK_MANDATES = [];
 const FALLBACK_SIGNALS = [];
+
 
 // --- Components ---
 
