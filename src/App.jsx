@@ -3,36 +3,48 @@ import {
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Clock, Calendar, Users, AlertCircle, History
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Calendar, Users, AlertCircle, Clock, History
 } from 'lucide-react';
 
 // ==========================================
-// 1. AUTHENTICATION SETUP (PRODUCTION)
+// 1. AUTHENTICATION SETUP
 // ==========================================
 
-// ✅ REAL CLERK:
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 🅰️ REAL CLERK (UNCOMMENT FOR PRODUCTION / LOCAL):
+ import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
 
 // ==========================================
 // 2. CONFIGURATION & SECRETS
 // ==========================================
 
-// ✅ PRODUCTION CONFIG:
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
-const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
 
-if (!CLERK_KEY) console.error("Missing VITE_CLERK_KEY. Check Vercel Settings.");
+// 🅱️ PREVIEW / LOCAL FALLBACK (ACTIVE FOR NOW):
+const API_URL = "http://localhost:5000/api";
+const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE"; 
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_YOUR_LINK"; 
+const ADMIN_EMAIL = "wayne@railnology.com";
 
-// --- Branding ---
-const BRAND = { name: "Railnology", color: "bg-slate-900", accent: "text-amber-500" };
+
+// --- Branding Constants ---
+const BRAND = {
+  name: "Railnology",
+  domain: "railnology.com",
+  color: "bg-slate-900", 
+  accent: "text-amber-500" 
+};
 
 // --- MARKET RATE DATA ---
 const MARKET_RATES = {
-  "conductor": "$60k - $85k (Mkt Est.)", "engineer": "$75k - $110k (Mkt Est.)", "dispatcher": "$80k - $105k (Mkt Est.)", "mechanic": "$28 - $42/hr (Mkt Est.)", "manager": "$95k - $130k (Mkt Est.)"
+  "conductor": "$60k - $85k (Mkt Est.)",
+  "engineer": "$75k - $110k (Mkt Est.)",
+  "dispatcher": "$80k - $105k (Mkt Est.)",
+  "mechanic": "$28 - $42/hr (Mkt Est.)",
+  "manager": "$95k - $130k (Mkt Est.)"
 };
 
+// --- HELPER: Formats ---
 const formatSalary = (val) => {
   if (!val) return "DOE";
   if (val === "Competitive" || val === "DOE") return val;
@@ -45,10 +57,21 @@ const formatSalary = (val) => {
 };
 
 const getCompensation = (job) => {
-  if (job.salary && job.salary !== "Competitive" && job.salary !== "DOE") return formatSalary(job.salary);
+  if (job.salary && job.salary !== "Competitive" && job.salary !== "DOE") {
+    return formatSalary(job.salary);
+  }
   const titleLower = job.title.toLowerCase();
-  for (const [key, rate] of Object.entries(MARKET_RATES)) if (titleLower.includes(key)) return rate;
+  for (const [key, rate] of Object.entries(MARKET_RATES)) {
+    if (titleLower.includes(key)) return rate;
+  }
   return "DOE";
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "TBD";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "Pending"; // Handle invalid dates gracefully
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 // --- FALLBACK DATA ---
@@ -57,6 +80,10 @@ const FALLBACK_JOBS = [
 ];
 const FALLBACK_GLOSSARY = [
   { term: "Pantograph", def: "An apparatus mounted on the roof of an electric train to collect power.", hasVisual: true, visualTag: "/diagrams/pantograph.gif" },
+];
+const FALLBACK_STANDARDS = [{ code: "AREMA", title: "Manual for Railway Engineering", description: "Standard specifications for design and construction." }];
+const FALLBACK_SIGNALS = [
+  { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' },
 ];
 
 // --- Components ---
@@ -101,7 +128,10 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           <button onClick={onProfileClick} className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10">
+           <button 
+             onClick={onProfileClick} 
+             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
+           >
              <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
            </button>
            <UserButton afterSignOutUrl="/" />
@@ -112,30 +142,154 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
 );
 
 const SectionTitle = ({ title, subtitle }) => (
-  <div className="mb-5 mt-2"><h2 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h2>{subtitle && <p className="text-slate-500 text-xs font-medium mt-1">{subtitle}</p>}</div>
+  <div className="mb-5 mt-2">
+    <h2 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h2>
+    {subtitle && <p className="text-slate-500 text-xs font-medium mt-1">{subtitle}</p>}
+  </div>
 );
 
+// --- HELPER: Job Logo Component ---
 const JobLogo = ({ logo, company, size="sm" }) => {
   const [error, setError] = useState(false);
   const dims = size === "lg" ? "w-16 h-16 p-2" : "w-12 h-12 p-1";
   const iconSize = size === "lg" ? "w-8 h-8" : "w-6 h-6";
-  if (!logo || error) return <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}><Train className={`${iconSize} text-amber-500`} /></div>;
-  return <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}><img src={logo} alt={company} className="w-full h-full object-contain rounded-md" onError={() => setError(true)} /></div>;
+
+  if (!logo || error) {
+    return (
+      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}>
+        <Train className={`${iconSize} text-amber-500`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}>
+      <img 
+        src={logo} 
+        alt={company} 
+        className="w-full h-full object-contain rounded-md" 
+        onError={() => setError(true)} 
+      />
+    </div>
+  );
 };
 
+// --- REUSABLE JOB CARD ---
 const JobCard = ({ job, onClick }) => (
   <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
     <div className="flex justify-between items-start gap-3">
       <JobLogo logo={job.logo} company={job.company} />
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-slate-800 text-sm truncate pr-6 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
-        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">{job.company} {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}</p>
-        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2"><Globe className="w-3 h-3 mr-1" /> {job.location} <span className="mx-2 text-slate-200">|</span> <span className="text-emerald-600 font-bold">{getCompensation(job)}</span></div>
-        <div className="flex gap-2 mt-2"><button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>{job.externalLink && (<div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">Apply <ExternalLink className="w-2.5 h-2.5 ml-1" /></div>)}</div>
+        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">
+          {job.company} 
+          {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}
+        </p>
+        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2">
+          <Globe className="w-3 h-3 mr-1" /> {job.location}
+          <span className="mx-2 text-slate-200">|</span>
+          <span className="text-emerald-600 font-bold">{getCompensation(job)}</span>
+        </div>
+        <div className="flex gap-2 mt-2">
+            <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>
+            {job.externalLink && (
+              <div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">
+                Apply <ExternalLink className="w-2.5 h-2.5 ml-1" />
+              </div>
+            )}
+        </div>
       </div>
     </div>
   </div>
 );
+
+
+// --- Paywall Component ---
+const PaywallModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+        <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
+          <Lock className="w-6 h-6 text-amber-600" />
+        </div>
+        <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Unlock Pro Tools</h3>
+        <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
+          Get access to the **Signal Decoder**, automated compliance tools, and advanced data.
+        </p>
+        <div className="space-y-3">
+          <a 
+            href={STRIPE_PAYMENT_LINK} 
+            target="_blank" 
+            rel="noreferrer"
+            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
+          >
+            <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
+          </a>
+          <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Restore Purchases</button>
+        </div>
+        <p className="text-[10px] text-center text-slate-300 mt-4">Secured by Stripe</p>
+      </div>
+    </div>
+  );
+};
+
+// --- CALCULATOR COMPONENT (TrackAid) ---
+const CurveResistanceCalculator = ({ isPro }) => {
+  const [weight, setWeight] = useState(5000); // Tons
+  const [degree, setDegree] = useState(2); // Degrees
+  const [resistance, setResistance] = useState(0);
+
+  useEffect(() => {
+    // Standard Formula: 0.8 lbs/ton per degree of curvature
+    const r = 0.8 * weight * degree;
+    setResistance(r);
+  }, [weight, degree]);
+
+  return (
+    <div className="space-y-5">
+        <div className="flex gap-4">
+          <div className="w-full">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Train Weight (Tons)</label>
+            <input 
+              type="range" min="1000" max="20000" step="100" 
+              value={weight} 
+              onChange={(e) => setWeight(Number(e.target.value))}
+              className="w-full accent-indigo-600"
+              disabled={!isPro}
+            />
+            <div className="text-right text-xs font-bold text-slate-700">{weight.toLocaleString()} tons</div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Curve Degree</label>
+          <input 
+            type="range" min="0" max="15" step="0.5" 
+            value={degree} 
+            onChange={(e) => setDegree(Number(e.target.value))}
+            className="w-full accent-indigo-600"
+            disabled={!isPro}
+          />
+          <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
+        </div>
+
+        {/* Visualization */}
+        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden">
+           <div className="flex justify-between items-end mb-1">
+             <span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span>
+             <span className="text-xl font-extrabold text-indigo-600">{resistance.toLocaleString()} <span className="text-sm text-slate-400">lbs</span></span>
+           </div>
+           <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
+                style={{ width: `${Math.min((resistance / 240000) * 100, 100)}%` }} 
+              ></div>
+           </div>
+        </div>
+    </div>
+  );
+};
 
 // --- RAILOPS: CREW SCHEDULER (Startup 3.0) ---
 const RailOpsView = () => {
@@ -143,6 +297,9 @@ const RailOpsView = () => {
   const [crews, setCrews] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Assignment Modal State
+  const [selectedScheduleId, setSelectedScheduleId] = useState(null);
 
   useEffect(() => {
     const fetchUrl = viewMode === 'history' ? `${API_URL}/schedules?type=history` : `${API_URL}/schedules`;
@@ -157,18 +314,19 @@ const RailOpsView = () => {
       .catch(err => console.error("RailOps Fetch Error:", err));
   }, [viewMode]);
 
-  const handleAssign = async (scheduleId) => {
-    // Simple assignment logic: pick first available crew
-    const avail = crews.find(c => c.status === 'Available');
-    if(!avail) return alert("No available crew members.");
-    await fetch(`${API_URL}/schedules/${scheduleId}/assign`, {
+  const handleAssign = async (crewId) => {
+    if(!selectedScheduleId) return;
+    
+    await fetch(`${API_URL}/schedules/${selectedScheduleId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crewId: avail._id })
+        body: JSON.stringify({ crewId })
     });
-    // Refresh
+    
+    // Refresh data
     const res = await fetch(`${API_URL}/schedules`);
     setSchedules(await res.json());
+    setSelectedScheduleId(null); // Close modal
   };
 
   const getStatusColor = (status) => {
@@ -178,8 +336,43 @@ const RailOpsView = () => {
     return 'bg-gray-100 text-gray-500';
   };
 
+  const availableCrew = crews.filter(c => c.status === 'Available');
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+       
+       {/* ASSIGNMENT MODAL (Popup) */}
+       {selectedScheduleId && (
+         <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-5 animate-in zoom-in-95 duration-200">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-slate-900">Assign Crew Member</h3>
+                  <button onClick={() => setSelectedScheduleId(null)}><X className="w-5 h-5 text-slate-400" /></button>
+               </div>
+               <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {availableCrew.length > 0 ? availableCrew.map(c => (
+                     <button 
+                       key={c._id} 
+                       onClick={() => handleAssign(c._id)}
+                       className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+                     >
+                        <div className="flex items-center">
+                           <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs mr-3">{c.name.charAt(0)}</div>
+                           <div>
+                              <div className="font-bold text-slate-800 text-sm">{c.name}</div>
+                              <div className="text-xs text-slate-500">{c.role} • {c.certification}</div>
+                           </div>
+                        </div>
+                        <PlusCircle className="w-5 h-5 text-indigo-400" />
+                     </button>
+                  )) : (
+                     <div className="text-center py-6 text-slate-400 text-sm italic">No crew available.</div>
+                  )}
+               </div>
+            </div>
+         </div>
+       )}
+
        <div className="flex space-x-2 bg-white p-1 rounded-xl border border-slate-200 mb-4">
          {['live', 'planning', 'history'].map(m => (
            <button key={m} onClick={() => setViewMode(m)} className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition ${viewMode === m ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
@@ -190,19 +383,20 @@ const RailOpsView = () => {
 
        {viewMode === 'live' && (
          <div className="bg-slate-900 text-white p-5 rounded-xl shadow-lg mb-4">
-            <div className="flex items-center justify-between mb-2"><h3 className="font-bold text-lg flex items-center"><Train className="w-5 h-5 mr-2 text-amber-500" /> Dispatch Board</h3><span className="text-xs font-mono bg-slate-800 px-2 py-1 rounded text-slate-300">LIVE</span></div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-               <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold">{schedules.length}</div><div className="text-[10px] text-slate-400">Trains</div></div>
-               <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold text-emerald-400">{crews.filter(c => c.status === 'Available').length}</div><div className="text-[10px] text-slate-400">Crew</div></div>
-               <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold text-red-400">0</div><div className="text-[10px] text-slate-400">Alerts</div></div>
-            </div>
+            <div className="flex items-center justify-between mb-2">
+             <h3 className="font-bold text-lg flex items-center"><Train className="w-5 h-5 mr-2 text-amber-500" /> Dispatch Board</h3>
+             <span className="text-xs font-mono bg-slate-800 px-2 py-1 rounded text-slate-300">LIVE</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+             <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold">{schedules.length}</div><div className="text-[10px] text-slate-400">Trains</div></div>
+             <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold text-emerald-400">{crews.filter(c => c.status === 'Available').length}</div><div className="text-[10px] text-slate-400">Crew Ready</div></div>
+             <div className="bg-slate-800 p-2 rounded-lg"><div className="text-xl font-bold text-red-400">0</div><div className="text-[10px] text-slate-400">Alerts</div></div>
+          </div>
          </div>
        )}
 
        <div>
-          <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center">
-             {viewMode === 'history' ? "Past Runs (10yr Archive)" : viewMode === 'planning' ? "Future Schedule (12mo)" : "Active Schedule"}
-          </h4>
+          <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center"><Calendar className="w-4 h-4 mr-2 text-indigo-500" /> Schedule</h4>
           <div className="space-y-3">
              {schedules.map(sched => (
                 <div key={sched._id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -211,7 +405,7 @@ const RailOpsView = () => {
                          <div className="text-sm font-bold text-slate-900 flex items-center">{sched.trainId} <span className="ml-2 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">{sched.status}</span></div>
                          <div className="text-xs text-slate-500 mt-0.5">{sched.origin} &rarr; {sched.destination}</div>
                       </div>
-                      <div className="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-1 rounded">{new Date(sched.departureTime).toLocaleDateString()}</div>
+                      <div className="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-1 rounded">{formatDate(sched.departureTime)}</div>
                    </div>
                    <div className="mt-3 pt-3 border-t border-slate-100">
                       <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Assigned Crew</div>
@@ -225,13 +419,13 @@ const RailOpsView = () => {
                             <div className="text-[10px] text-red-400 italic flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> No crew assigned</div>
                          )}
                          {viewMode !== 'history' && (
-                           <button onClick={() => handleAssign(sched._id)} className="text-[10px] text-indigo-600 font-bold border border-dashed border-indigo-200 px-2 py-1 rounded-full hover:bg-indigo-50">+ Assign</button>
+                           // ✅ Opens Modal on Click
+                           <button onClick={() => setSelectedScheduleId(sched._id)} className="text-[10px] text-indigo-600 font-bold border border-dashed border-indigo-200 px-2 py-1 rounded-full hover:bg-indigo-50 transition">+ Assign</button>
                          )}
                       </div>
                    </div>
                 </div>
              ))}
-             {schedules.length === 0 && <div className="text-center py-8 text-slate-400 text-xs italic">No records found for this period.</div>}
           </div>
        </div>
 
@@ -304,15 +498,8 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        </div>
        
        <div className="mt-10 px-4 border-b border-slate-200 flex space-x-6 text-sm font-medium text-slate-500 overflow-x-auto">
-          {/* ✅ ADDED RAILOPS TAB HERE */}
           {['Overview', 'RailOps', 'Jobs', 'People'].map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => setActiveTab(tab.toLowerCase())} 
-              className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}
-            >
-              {tab}
-            </button>
+            <button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>
           ))}
        </div>
 
@@ -329,16 +516,15 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">Applicants</div>
                   </div>
                </div>
-               
                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
                   <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center"><PlusCircle className="w-4 h-4 mr-2 text-amber-500" /> Post a New Job</h3>
                   <div className="space-y-3">
-                     <input placeholder="Job Title" className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+                     <input placeholder="Job Title" className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
                      <div className="flex gap-2">
-                        <input placeholder="Location" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-                        <input placeholder="Salary" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} />
+                        <input placeholder="Location" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
+                        <input placeholder="Salary" className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} />
                      </div>
-                     <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                     <select className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
                         <option>Field</option><option>Engineering</option><option>Management</option><option>Office</option>
                      </select>
                      <button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-800 transition">Post Job</button>
@@ -348,7 +534,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
             </div>
          )}
          
-         {/* ✅ RAILOPS MODULE INTEGRATED HERE */}
          {activeTab === 'railops' && <RailOpsView />}
          
          {activeTab === 'jobs' && <div className="space-y-2">{jobs.map(job => <JobCard key={job._id} job={job} onClick={() => {}} />)}</div>}
@@ -410,19 +595,6 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
     </div>
   );
 };
-
-// --- CALCULATOR & PAYWALL ---
-const CurveResistanceCalculator = ({ isPro }) => {
-  const [weight, setWeight] = useState(5000); const [degree, setDegree] = useState(2); const [resistance, setResistance] = useState(0);
-  useEffect(() => { setResistance(0.8 * weight * degree); }, [weight, degree]);
-  return (
-    <div className="space-y-5"><div className="flex gap-4"><div className="w-full"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Train Weight (Tons)</label><input type="range" min="1000" max="20000" step="100" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="w-full accent-indigo-600" disabled={!isPro} /><div className="text-right text-xs font-bold text-slate-700">{weight.toLocaleString()} tons</div></div></div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Curve Degree</label><input type="range" min="0" max="15" step="0.5" value={degree} onChange={(e) => setDegree(Number(e.target.value))} className="w-full accent-indigo-600" disabled={!isPro} /><div className="text-right text-xs font-bold text-slate-700">{degree}°</div></div><div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden"><div className="flex justify-between items-end mb-1"><span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span><span className="text-xl font-extrabold text-indigo-600">{resistance.toLocaleString()} <span className="text-sm text-slate-400">lbs</span></span></div><div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${Math.min((resistance / 240000) * 100, 100)}%` }}></div></div></div></div>
-  );
-};
-
-const PaywallModal = ({ onClose }) => (
-  <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200"><div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative"><button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button><div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm"><Lock className="w-6 h-6 text-amber-600" /></div><h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Unlock Pro Tools</h3><p className="text-center text-slate-500 text-sm mb-6">Get access to the Curve Resistance Calculator.</p><a href={STRIPE_PAYMENT_LINK} target="_blank" rel="noreferrer" className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg flex items-center justify-center"><CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo</a></div></div>
-);
 
 // --- STANDARD VIEWS ---
 const LoadingScreen = () => <div className="p-10 text-center text-slate-400">Loading...</div>;
