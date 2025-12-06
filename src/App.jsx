@@ -109,7 +109,10 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
           </SignInButton>
         </SignedOut>
         <SignedIn>
-           <button onClick={onProfileClick} className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10">
+           <button 
+             onClick={onProfileClick} 
+             className="flex items-center text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
+           >
              <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
            </button>
            <UserButton afterSignOutUrl="/" />
@@ -120,30 +123,153 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
 );
 
 const SectionTitle = ({ title, subtitle }) => (
-  <div className="mb-5 mt-2"><h2 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h2>{subtitle && <p className="text-slate-500 text-xs font-medium mt-1">{subtitle}</p>}</div>
+  <div className="mb-5 mt-2">
+    <h2 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h2>
+    {subtitle && <p className="text-slate-500 text-xs font-medium mt-1">{subtitle}</p>}
+  </div>
 );
 
+// --- HELPER: Job Logo Component ---
 const JobLogo = ({ logo, company, size="sm" }) => {
   const [error, setError] = useState(false);
   const dims = size === "lg" ? "w-16 h-16 p-2" : "w-12 h-12 p-1";
   const iconSize = size === "lg" ? "w-8 h-8" : "w-6 h-6";
-  if (!logo || error) return <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}><Train className={`${iconSize} text-amber-500`} /></div>;
-  return <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}><img src={logo} alt={company} className="w-full h-full object-contain rounded-md" onError={() => setError(true)} /></div>;
+
+  if (!logo || error) {
+    return (
+      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-lg border border-slate-800 p-1 flex items-center justify-center shadow-sm`}>
+        <Train className={`${iconSize} text-amber-500`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${dims} flex-shrink-0 bg-white rounded-lg border border-slate-100 p-1 flex items-center justify-center shadow-sm`}>
+      <img 
+        src={logo} 
+        alt={company} 
+        className="w-full h-full object-contain rounded-md" 
+        onError={() => setError(true)} 
+      />
+    </div>
+  );
 };
 
+// --- REUSABLE JOB CARD ---
 const JobCard = ({ job, onClick }) => (
   <div onClick={() => onClick(job)} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden cursor-pointer group mb-3">
     <div className="flex justify-between items-start gap-3">
       <JobLogo logo={job.logo} company={job.company} />
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-slate-800 text-sm truncate pr-6 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
-        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">{job.company} {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}</p>
-        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2"><Globe className="w-3 h-3 mr-1" /> {job.location} <span className="mx-2 text-slate-200">|</span> <span className="text-emerald-600 font-bold">{getCompensation(job)}</span></div>
-        <div className="flex gap-2 mt-2"><button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>{job.externalLink && (<div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">Apply <ExternalLink className="w-2.5 h-2.5 ml-1" /></div>)}</div>
+        <p className="text-xs font-medium text-slate-500 flex items-center mt-0.5">
+          {job.company} 
+          {job.tags && job.tags.includes('External') && <span className="ml-2 text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100">External</span>}
+        </p>
+        <div className="flex items-center text-xs text-slate-400 mt-2 mb-2">
+          <Globe className="w-3 h-3 mr-1" /> {job.location}
+          <span className="mx-2 text-slate-200">|</span>
+          <span className="text-emerald-600 font-bold">{getCompensation(job)}</span>
+        </div>
+        <div className="flex gap-2 mt-2">
+            <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded hover:bg-slate-100 border border-slate-200 transition">View Details</button>
+            {job.externalLink && (
+              <div className="inline-flex items-center text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded hover:bg-slate-800 transition">
+                Apply <ExternalLink className="w-2.5 h-2.5 ml-1" />
+              </div>
+            )}
+        </div>
       </div>
     </div>
   </div>
 );
+
+// --- Paywall Component ---
+const PaywallModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+        <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
+          <Lock className="w-6 h-6 text-amber-600" />
+        </div>
+        <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Unlock Pro Tools</h3>
+        <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
+          Get access to the **Signal Decoder**, automated compliance tools, and advanced data.
+        </p>
+        <div className="space-y-3">
+          <a 
+            href={STRIPE_PAYMENT_LINK} 
+            target="_blank" 
+            rel="noreferrer"
+            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
+          >
+            <CreditCard className="w-4 h-4 mr-2" /> Subscribe for $4.99/mo
+          </a>
+          <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Restore Purchases</button>
+        </div>
+        <p className="text-[10px] text-center text-slate-300 mt-4">Secured by Stripe</p>
+      </div>
+    </div>
+  );
+};
+
+// --- CALCULATOR COMPONENT (TrackAid) ---
+const CurveResistanceCalculator = ({ isPro }) => {
+  const [weight, setWeight] = useState(5000); // Tons
+  const [degree, setDegree] = useState(2); // Degrees
+  const [resistance, setResistance] = useState(0);
+
+  useEffect(() => {
+    // Standard Formula: 0.8 lbs/ton per degree of curvature
+    const r = 0.8 * weight * degree;
+    setResistance(r);
+  }, [weight, degree]);
+
+  return (
+    <div className="space-y-5">
+        <div className="flex gap-4">
+          <div className="w-full">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Train Weight (Tons)</label>
+            <input 
+              type="range" min="1000" max="20000" step="100" 
+              value={weight} 
+              onChange={(e) => setWeight(Number(e.target.value))}
+              className="w-full accent-indigo-600"
+              disabled={!isPro}
+            />
+            <div className="text-right text-xs font-bold text-slate-700">{weight.toLocaleString()} tons</div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Curve Degree</label>
+          <input 
+            type="range" min="0" max="15" step="0.5" 
+            value={degree} 
+            onChange={(e) => setDegree(Number(e.target.value))}
+            className="w-full accent-indigo-600"
+            disabled={!isPro}
+          />
+          <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
+        </div>
+
+        {/* Visualization */}
+        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden">
+           <div className="flex justify-between items-end mb-1">
+             <span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span>
+             <span className="text-xl font-extrabold text-indigo-600">{resistance.toLocaleString()} <span className="text-sm text-slate-400">lbs</span></span>
+           </div>
+           <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
+                style={{ width: `${Math.min((resistance / 240000) * 100, 100)}%` }} 
+              ></div>
+           </div>
+        </div>
+    </div>
+  );
+};
 
 // --- RAILOPS: CREW SCHEDULER (Startup 3.0) ---
 const RailOpsView = () => {
@@ -151,6 +277,8 @@ const RailOpsView = () => {
   const [crews, setCrews] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Assignment Modal State
   const [selectedScheduleId, setSelectedScheduleId] = useState(null);
 
   useEffect(() => {
@@ -177,16 +305,17 @@ const RailOpsView = () => {
         body: JSON.stringify({ crewId })
     });
     
-    // ✅ REFRESH EVERYTHING
+    // 2. Refresh Schedules (Update Train Card)
     const schedRes = await fetch(`${API_URL}/schedules`);
     const newSchedules = await schedRes.json();
     setSchedules(newSchedules);
 
+    // 3. Refresh Crews (Update Crew Status & Availability Pool)
     const crewRes = await fetch(`${API_URL}/crew`);
     const newCrews = await crewRes.json();
     setCrews(newCrews);
 
-    setSelectedScheduleId(null); 
+    setSelectedScheduleId(null); // Close modal
   };
 
   const getStatusColor = (status) => {
@@ -279,6 +408,7 @@ const RailOpsView = () => {
                             <div className="text-[10px] text-red-400 italic flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> No crew assigned</div>
                          )}
                          {viewMode !== 'history' && (
+                           // ✅ Opens Modal on Click
                            <button onClick={() => setSelectedScheduleId(sched._id)} className="text-[10px] text-indigo-600 font-bold border border-dashed border-indigo-200 px-2 py-1 rounded-full hover:bg-indigo-50 transition">+ Assign</button>
                          )}
                       </div>
@@ -551,7 +681,18 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
           {/* ✅ MY ASSIGNMENTS SECTION (Visible if available) */}
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
              <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center"><Calendar className="w-4 h-4 mr-2 text-indigo-600" /> My Schedule</h3>
-             <div className="text-xs text-slate-400 italic">Check RailOps dashboard for assignments.</div>
+             {myAssignments.length > 0 ? (
+               <div className="space-y-2">
+                 {myAssignments.map(s => (
+                   <div key={s._id} className="flex justify-between items-center text-xs border-b border-slate-100 pb-2 last:border-0">
+                      <div><span className="font-bold text-slate-700">{s.trainId}</span> <span className="text-slate-500">{s.origin} &rarr; {s.destination}</span></div>
+                      <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-mono">{new Date(s.departureTime).toLocaleDateString()}</span>
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <p className="text-xs text-slate-400 italic">No upcoming train assignments.</p>
+             )}
           </div>
        </div>
     </div>
@@ -713,7 +854,7 @@ const LibraryView = ({ data }) => {
     { id: 'mandates', label: 'Mandates', icon: ScrollText, data: data.mandates },
   ];
 
-  const activeData = (tabs.find(t => t.id === activeSubTab)?.data || []) || [];
+  const activeData = tabs.find(t => t.id === activeSubTab)?.data || [];
   
   const filtered = useMemo(() => 
     activeData.filter(item => {
@@ -893,7 +1034,7 @@ const MainContent = () => {
       const [jobs, glossary, signals, standards, manuals, regulations, mandates] = await Promise.all(results.map(r => r.json()));
       
       setData({ jobs, glossary, signals, standards, manuals, regulations, mandates });
-    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_SIGNALS, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
+    } catch (err) { console.error(err); setError("Could not load data."); setData({jobs: FALLBACK_JOBS, glossary: FALLBACK_GLOSSARY, signals: FALLBACK_GLOSSARY, standards: FALLBACK_STANDARDS, manuals: [], regulations: [], mandates: []}); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
