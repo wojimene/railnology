@@ -1,4 +1,4 @@
-console.log("--- RAILOPS & LIBRARY EXPANSION SEEDER ---");
+console.log("--- RAILOPS DATA CLEANER & SEEDER ---");
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -12,8 +12,9 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const MONGO_URI = process.env.MONGO_URI; 
 if (!MONGO_URI) { console.error("❌ MONGO_URI missing in .env"); process.exit(1); }
 
-// --- SCHEMAS (Must match server.js) ---
-const CrewSchema = new mongoose.Schema({ name: String, role: String, status: String, company: String, certification: String });
+// --- SCHEMAS (Must match server.js exactly) ---
+const CrewSchema = new mongoose.Schema({ name: String, email: String, role: String, status: String, company: String, certification: String });
+// ✅ FIX: Ensure departureTime is explicitly a Date type to match Server Schema
 const ScheduleSchema = new mongoose.Schema({ trainId: String, origin: String, destination: String, departureTime: Date, arrivalTime: Date, status: String, company: String, assignedCrew: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Crew' }] });
 
 const GlossarySchema = new mongoose.Schema({ term: String, def: String, hasVisual: Boolean, visualTag: String, videoUrl: String });
@@ -34,7 +35,8 @@ const Manual = mongoose.model('Manual', ManualSchema);
 const Regulation = mongoose.model('Regulation', RegulationSchema);
 const Mandate = mongoose.model('Mandate', MandateSchema);
 
-// --- RAILOPS DATA ---
+// --- DATA ---
+
 const CREW_MEMBERS = [
   { name: "John Henry", role: "Engineer", status: "Available", company: "Union Pacific", certification: "Class 1" },
   { name: "Casey Jones", role: "Engineer", status: "On Duty", company: "Union Pacific", certification: "Class 1" },
@@ -42,38 +44,13 @@ const CREW_MEMBERS = [
   { name: "Mike Davis", role: "Conductor", status: "Resting", company: "Union Pacific", certification: "Level 3" }
 ];
 
-// --- LIBRARY DATA ---
-const STANDARDS = [
-  { code: "AREMA Ch. 1", title: "Roadway & Ballast", description: "Guidelines for railway track ballast and roadbed.", agency: "AREMA", url: "#" },
-  { code: "IEEE 1474.1", title: "CBTC Performance", description: "Standard for Communications-Based Train Control.", agency: "IEEE", url: "#" },
-  { code: "EN 50126", title: "RAMS", description: "Specification and demonstration of Reliability, Availability, Maintainability and Safety (RAMS).", agency: "CENELEC", url: "#" }
-];
-
-const MANUALS = [
-  { title: "General Code of Operating Rules (GCOR)", category: "Operations", version: "8th Edition", url: "#" },
-  { title: "Track Safety Standards Compliance Manual", category: "Safety", version: "2024", url: "#" },
-  { title: "Bridge Welding Manual", category: "Maintenance", version: "2.1", url: "#" }
-];
-
-const REGULATIONS = [
-  { code: "49 CFR Part 213", title: "Track Safety Standards", summary: "Prescribes minimum safety requirements for railroad track.", effectiveDate: "2024", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-II/part-213" },
-  { code: "49 CFR Part 236", title: "Signal Systems", summary: "Rules regarding signal and train control systems.", effectiveDate: "2024", url: "#" },
-  { code: "49 CFR Part 229", title: "Locomotive Safety Standards", summary: "Inspection and maintenance standards for steam and diesel locomotives.", effectiveDate: "2023", url: "#" }
-];
-
-const MANDATES = [
-  { title: "Positive Train Control (PTC)", deadline: "Dec 31, 2020", description: "Implementation of PTC technology on all required main lines.", url: "#" },
-  { title: "Electronically Controlled Pneumatic (ECP) Brakes", deadline: "Repealed", description: "Requirement for ECP brakes on high-hazard flammable unit trains.", url: "#" }
-];
-
-const GLOSSARY = [
-  { term: "Pantograph", def: "Apparatus on top of an electric train to collect power.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/d/d8/Pantograph_Animation.gif", videoUrl: "https://www.youtube.com/watch?v=AgmvqY6hU4E" },
-  { term: "Bogie", def: "Wheel chassis.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Baureihe_614_Drehgestell.jpg", videoUrl: "https://www.youtube.com/watch?v=45M24B9oVoI" }
-];
-
-const SIGNALS = [
-  { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' }
-];
+// Library Content
+const STANDARDS = [ { code: "AREMA Ch. 1", title: "Roadway & Ballast", description: "Guidelines for railway track ballast and roadbed.", agency: "AREMA", url: "#" } ];
+const MANUALS = [ { title: "General Code of Operating Rules (GCOR)", category: "Operations", version: "8th Edition", url: "#" } ];
+const REGULATIONS = [ { code: "49 CFR Part 213", title: "Track Safety Standards", summary: "Prescribes minimum safety requirements for railroad track.", effectiveDate: "2024", url: "#" } ];
+const MANDATES = [ { title: "Positive Train Control (PTC)", deadline: "Dec 31, 2020", description: "Implementation of PTC technology.", url: "#" } ];
+const GLOSSARY = [ { term: "Pantograph", def: "Apparatus on top of an electric train to collect power.", hasVisual: true, visualTag: "https://upload.wikimedia.org/wikipedia/commons/d/d8/Pantograph_Animation.gif", videoUrl: "" } ];
+const SIGNALS = [ { id: 'stop', colors: ['R', 'R', 'R'], name: 'Stop', rule: 'Stop.' } ];
 
 const run = async () => {
   try {
@@ -81,33 +58,42 @@ const run = async () => {
     console.log("✅ Connected.");
 
     console.log('...Wiping old data...');
+    // We purposefully wipe schedules to remove the "Bad Date Strings"
     await Promise.all([
-      Crew.deleteMany({}), Schedule.deleteMany({}),
+      Crew.deleteMany({}), 
+      Schedule.deleteMany({}),
       Standard.deleteMany({}), Manual.deleteMany({}), Regulation.deleteMany({}), Mandate.deleteMany({}),
       Glossary.deleteMany({}), Signal.deleteMany({})
-      // Note: We do NOT wipe Jobs here to preserve scraped/user data
     ]);
 
-    console.log('...Injecting RailOps Data...');
+    console.log('...Injecting Valid Data...');
+    
     // 1. Insert Crew
     const createdCrew = await Crew.insertMany(CREW_MEMBERS);
     
-    // 2. Create Schedules linked to Crew (Relational Data)
+    // 2. Create Schedules with REAL DATE OBJECTS
+    // ✅ FIX: using `new Date()` instead of "08:00 AM" string
+    const today = new Date();
+    const laterToday = new Date(today);
+    laterToday.setHours(today.getHours() + 4);
+
     const schedules = [
       { 
         trainId: "UP-450", origin: "Chicago, IL", destination: "Omaha, NE", 
-        departureTime: "08:00 AM", status: "Scheduled", company: "Union Pacific",
-        assignedCrew: [createdCrew[0]._id, createdCrew[2]._id] // Engineer 1 + Conductor 1
+        departureTime: today, // ✅ Valid Date Object
+        status: "Scheduled", company: "Union Pacific",
+        assignedCrew: [createdCrew[0]._id] 
       },
       { 
         trainId: "UP-882", origin: "Denver, CO", destination: "Salt Lake, UT", 
-        departureTime: "02:30 PM", status: "En Route", company: "Union Pacific",
-        assignedCrew: [createdCrew[1]._id] // Engineer 2
+        departureTime: laterToday, // ✅ Valid Date Object
+        status: "En Route", company: "Union Pacific",
+        assignedCrew: [createdCrew[1]._id] 
       }
     ];
+    
     await Schedule.insertMany(schedules);
 
-    console.log('...Injecting Library Data...');
     await Promise.all([
       Standard.insertMany(STANDARDS),
       Manual.insertMany(MANUALS),
@@ -117,7 +103,7 @@ const run = async () => {
       Signal.insertMany(SIGNALS)
     ]);
 
-    console.log("🎉 SUCCESS! RailOps & Library Data Seeded.");
+    console.log("🎉 SUCCESS! Database cleaned and re-seeded with valid Date objects.");
     process.exit();
   } catch (err) { console.error(err); process.exit(1); }
 };
