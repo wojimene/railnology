@@ -98,7 +98,7 @@ const Mandate = mongoose.model('Mandate', MandateSchema);
 
 // --- API ENDPOINTS ---
 
-// LIBRARY ROUTES (Fixes 404s)
+// LIBRARY ROUTES
 app.get('/api/standards', async (req, res) => res.json(await Standard.find()));
 app.get('/api/manuals', async (req, res) => res.json(await Manual.find()));
 app.get('/api/regulations', async (req, res) => res.json(await Regulation.find()));
@@ -111,23 +111,44 @@ app.get('/api/jobs', async (req, res) => res.json(await Job.find().sort({ posted
 
 // RAILOPS ROUTES
 app.get('/api/crew', async (req, res) => res.json(await Crew.find()));
+
 app.get('/api/schedules', async (req, res) => {
   const { type } = req.query;
   const filter = type === 'history' ? { status: 'History' } : { status: { $ne: 'History' } };
   const schedules = await Schedule.find(filter).populate('assignedCrew').sort({ departureTime: 1 });
   res.json(schedules);
 });
+
+// ✅ FIXED ASSIGNMENT ROUTE (Resolves 500 Error)
 app.post('/api/schedules/:id/assign', async (req, res) => {
   try {
     const { crewId } = req.body;
+    if (!crewId) return res.status(400).json({ error: "Crew ID required" });
+
+    // 1. Find Schedule
     const schedule = await Schedule.findById(req.params.id);
-    if (!schedule.assignedCrew.includes(crewId)) {
+    if (!schedule) return res.status(404).json({ error: "Schedule not found. Please refresh." });
+
+    // 2. Check for Duplicates (using String comparison for safety)
+    const alreadyAssigned = schedule.assignedCrew.some(id => id.toString() === crewId);
+
+    if (!alreadyAssigned) {
+      // 3. Assign Crew
       schedule.assignedCrew.push(crewId);
       await schedule.save();
+      
+      // 4. Update Crew Status
       await Crew.findByIdAndUpdate(crewId, { status: 'On Duty' });
     }
-    res.json(schedule);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+
+    // 5. Return Populated Schedule (So UI updates names immediately)
+    const populatedSchedule = await Schedule.findById(req.params.id).populate('assignedCrew');
+    res.json(populatedSchedule);
+
+  } catch (err) { 
+    console.error("Assignment Error:", err);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 // USER ROUTES
@@ -149,9 +170,11 @@ app.post('/api/users/sync', async (req, res) => {
     res.json(user);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/users/:clerkId', async (req, res) => {
   try { const user = await User.findOne({ clerkId: req.params.clerkId }); if (!user) return res.status(404).json({ error: "User not found" }); res.json(user); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.put('/api/users/:clerkId', async (req, res) => {
   try { const user = await User.findOneAndUpdate({ clerkId: req.params.clerkId }, { $set: req.body }, { new: true }); res.json(user); } catch (err) { res.status(500).json({ error: err.message }); }
 });
