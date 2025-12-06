@@ -77,7 +77,7 @@ const JobSchema = new mongoose.Schema({
   jobType: String
 });
 
-// 4. LIBRARY (The missing 404 routes)
+// 4. LIBRARY
 const GlossarySchema = new mongoose.Schema({ term: String, def: String, hasVisual: Boolean, visualTag: String, videoUrl: String });
 const StandardSchema = new mongoose.Schema({ code: String, title: String, description: String, agency: String, url: String });
 const ManualSchema = new mongoose.Schema({ title: String, category: String, version: String, url: String });
@@ -119,40 +119,68 @@ app.get('/api/schedules', async (req, res) => {
   res.json(schedules);
 });
 
-// ✅ BULLETPROOF ASSIGNMENT ROUTE
+// ✅ ASSIGN CREW (Bulletproof)
 app.post('/api/schedules/:id/assign', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: "Database not connected." });
+
     const { crewId } = req.body;
-    if (!crewId) return res.status(400).json({ error: "Crew ID required" });
+    const scheduleId = req.params.id;
 
-    // 1. Find Schedule
-    const schedule = await Schedule.findById(req.params.id);
-    if (!schedule) return res.status(404).json({ error: "Schedule not found. Please refresh." });
+    if (!crewId || !mongoose.Types.ObjectId.isValid(crewId)) return res.status(400).json({ error: "Invalid Crew ID" });
+    if (!scheduleId || !mongoose.Types.ObjectId.isValid(scheduleId)) return res.status(400).json({ error: "Invalid Schedule ID" });
 
-    // 2. Initialize array if missing (Safety Check)
-    if (!schedule.assignedCrew) {
-        schedule.assignedCrew = [];
-    }
+    const schedule = await Schedule.findById(scheduleId);
+    if (!schedule) return res.status(404).json({ error: "Schedule not found." });
 
-    // 3. Check for Duplicates (using String comparison for safety)
-    // Also filters out any potential nulls in the array to prevent crashes
+    if (!schedule.assignedCrew) schedule.assignedCrew = [];
+
+    // Check for duplicates using string comparison
     const alreadyAssigned = schedule.assignedCrew.some(id => id && id.toString() === crewId);
 
     if (!alreadyAssigned) {
-      // 4. Assign Crew
       schedule.assignedCrew.push(crewId);
       await schedule.save();
-      
-      // 5. Update Crew Status
+      // Update status to On Duty
       await Crew.findByIdAndUpdate(crewId, { status: 'On Duty' });
     }
 
-    // 6. Return Populated Schedule (So UI updates names immediately)
-    const populatedSchedule = await Schedule.findById(req.params.id).populate('assignedCrew');
-    res.json(populatedSchedule);
+    const populated = await Schedule.findById(scheduleId).populate('assignedCrew');
+    res.json(populated);
 
   } catch (err) { 
     console.error("Assignment Error:", err);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// ✅ UNASSIGN CREW (New Feature)
+app.post('/api/schedules/:id/unassign', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: "Database not connected." });
+
+    const { crewId } = req.body;
+    const scheduleId = req.params.id;
+
+    if (!crewId || !scheduleId) return res.status(400).json({ error: "Missing IDs" });
+
+    const schedule = await Schedule.findById(scheduleId);
+    if (!schedule) return res.status(404).json({ error: "Schedule not found." });
+
+    // Remove crew from array
+    if (schedule.assignedCrew) {
+      schedule.assignedCrew = schedule.assignedCrew.filter(id => id && id.toString() !== crewId);
+      await schedule.save();
+      
+      // Reset status to Available
+      await Crew.findByIdAndUpdate(crewId, { status: 'Available' });
+    }
+
+    const populated = await Schedule.findById(scheduleId).populate('assignedCrew');
+    res.json(populated);
+
+  } catch (err) { 
+    console.error("Unassign Error:", err);
     res.status(500).json({ error: err.message }); 
   }
 });
