@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
@@ -8,17 +8,19 @@ import {
   Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, 
   ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock, Bot, Send
 } from 'lucide-react';
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
 // ==========================================
 
-// NOTE: import.meta is replaced with direct values for environment compatibility.
 const ENV = {
+  // Production environment variables
+  // Ensure these are set in your deployment platform (Vercel, Render, Netlify, etc.)
   API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
-  CLERK_KEY: import.meta.env.VITE_CLERK_KEY || '',
-  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK || '#', 
-  ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL
+  CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
+  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
+  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
 };
 
 const BRAND = {
@@ -29,21 +31,7 @@ const BRAND = {
 };
 
 // ==========================================
-// 3. AUTHENTICATION SIMULATION (Replaces Clerk for Preview)
-// ==========================================
-// NOTE: In production, uncomment the real Clerk imports and remove this block.
-
-// 🅰️ REAL CLERK (UNCOMMENT FOR PROD)
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-const SignedIn = ({ children }) => <>{children}</>;
-const SignedOut = ({ children }) => null;
-const SignInButton = ({ children }) => <button>{children}</button>;
-const UserButton = () => <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center font-bold text-slate-900">DU</div>;
-const ClerkProvider = ({ children }) => <>{children}</>;
-
-// ==========================================
-// 4. HELPER FUNCTIONS
+// 2. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
@@ -70,7 +58,7 @@ const formatDate = (dateString) => {
 };
 
 // ==========================================
-// 5. SUB-COMPONENTS
+// 3. SUB-COMPONENTS
 // ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
@@ -170,9 +158,15 @@ const JobCard = ({ job, onClick }) => (
         <div className="flex gap-2 mt-2">
             <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded border border-slate-200">View</button>
             {job.externalLink && (
-              <div className="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded">
+              <a 
+                href={job.externalLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded"
+              >
                 Apply
-              </div>
+              </a>
             )}
         </div>
       </div>
@@ -194,11 +188,15 @@ const AIChat = () => {
     setLoading(true);
 
     try {
-      // MOCK API CALL - Replace with real fetch in production
-      // const res = await fetch(`${ENV.API_URL}/chat`, ...);
-      await new Promise(r => setTimeout(r, 1000)); // Simulate delay
-      const data = { answer: `I can help you with "${userMsg}". (AI backend disconnected in preview)` };
+      const res = await fetch(`${ENV.API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMsg })
+      });
       
+      if (!res.ok) throw new Error('API Error');
+      
+      const data = await res.json();
       setMessages(prev => [...prev, { role: 'ai', text: data.answer }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting to the knowledge base right now." }]);
@@ -327,22 +325,50 @@ const RailOpsView = () => {
   const [selectedScheduleId, setSelectedScheduleId] = useState(null);
 
   const loadData = async () => {
-    // MOCK DATA FOR PREVIEW
-    setCrews([{ _id: 'c1', name: 'J. Smith', status: 'Available' }, { _id: 'c2', name: 'D. Jones', status: 'On Route' }]);
-    setSchedules([
-      { _id: 's1', trainId: 'Q-405', status: 'Active', departureTime: new Date().toISOString(), origin: 'Chicago', destination: 'Miami', assignedCrew: [] }
-    ]);
+    const t = Date.now();
+    const fetchUrl = viewMode === 'history' ? `${ENV.API_URL}/schedules?type=history&t=${t}` : `${ENV.API_URL}/schedules?t=${t}`;
+    
+    try {
+      const [res1, res2] = await Promise.all([
+        fetch(`${ENV.API_URL}/crew?t=${t}`),
+        fetch(fetchUrl)
+      ]);
+      
+      if (res1.ok) setCrews(await res1.json());
+      if (res2.ok) setSchedules(await res2.json());
+    } catch (e) {
+      console.error("Failed to load RailOps data", e);
+    }
   };
+  
   useEffect(() => { loadData(); }, [viewMode]);
 
   const handleAssign = async (crewId) => {
-    // Mock assignment
-    setSchedules(prev => prev.map(s => s._id === selectedScheduleId ? { ...s, assignedCrew: [...(s.assignedCrew || []), crews.find(c => c._id === crewId)] } : s));
-    setSelectedScheduleId(null);
+    if(!selectedScheduleId) return;
+    try {
+      await fetch(`${ENV.API_URL}/schedules/${selectedScheduleId}/assign`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({crewId})
+      });
+      await loadData();
+      setSelectedScheduleId(null);
+    } catch (e) {
+      console.error("Assign failed", e);
+    }
   };
   
   const handleUnassign = async (scheduleId, crewId) => {
-    setSchedules(prev => prev.map(s => s._id === scheduleId ? { ...s, assignedCrew: s.assignedCrew.filter(c => c._id !== crewId) } : s));
+    try {
+      await fetch(`${ENV.API_URL}/schedules/${scheduleId}/unassign`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({crewId})
+      });
+      await loadData();
+    } catch (e) {
+      console.error("Unassign failed", e);
+    }
   };
 
   const availableCrew = crews.filter(c => c.status === 'Available');
@@ -358,13 +384,13 @@ const RailOpsView = () => {
        {viewMode === 'live' && <div className="bg-slate-900 text-white p-5 rounded-xl mb-4 text-center"><h3 className="font-bold text-lg">Dispatch Board</h3><div className="text-xs mt-1 text-slate-400">Active Trains: {schedules.length}</div></div>}
        <div>
          <h4 className="font-bold text-sm mb-3">Schedule</h4>
-         <div className="space-y-3">{schedules.map(s => (
+         <div className="space-y-3">{schedules.length > 0 ? schedules.map(s => (
             <div key={s._id} className="bg-white p-4 rounded-xl border shadow-sm">
                <div className="flex justify-between mb-2"><div><span className="font-bold text-sm">{s.trainId}</span> <span className="text-xs bg-slate-100 px-1 rounded">{s.status}</span></div><span className="text-xs font-mono">{formatDate(s.departureTime)}</span></div>
                <div className="text-xs text-slate-500">{s.origin} &rarr; {s.destination}</div>
                <div className="mt-3 pt-3 border-t flex gap-2 flex-wrap">{s.assignedCrew?.map(c => <div key={c._id} className="flex items-center bg-slate-50 border px-2 py-1 rounded-full text-[10px] font-bold">{c.name} {viewMode!=='history' && <button onClick={()=>handleUnassign(s._id, c._id)} className="ml-2 text-slate-400 hover:text-red-500"><X className="w-3 h-3"/></button>}</div>)} {viewMode!=='history' && <button onClick={()=>setSelectedScheduleId(s._id)} className="text-[10px] text-indigo-600 font-bold border border-dashed px-2 py-1 rounded-full">+ Assign</button>}</div>
             </div>
-         ))}</div>
+         )) : <div className="text-center text-sm text-gray-500 py-4">No schedules found.</div>}</div>
        </div>
     </div>
   );
@@ -376,19 +402,36 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   const [jobs, setJobs] = useState([]);
   const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
 
-  // Use Mock jobs if mongoUser exists for demo
   useEffect(() => { 
     if (mongoUser?.companyName) { 
-        setJobs(MOCK_JOBS.filter(j => j.company === mongoUser.companyName || true)); // Show all for demo
+       fetch(`${ENV.API_URL}/jobs`)
+         .then(res => res.json())
+         .then(data => { 
+            setJobs(data.filter(j => j.company === mongoUser.companyName)); 
+         })
+         .catch(err => console.error("Error fetching company jobs", err));
     } 
   }, [mongoUser]);
 
   const handlePostJob = async () => {
     if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
-    // Simulate post
-    const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
-    setJobs([newJob, ...jobs]);
-    alert("Job posted! (Simulated)");
+    
+    try {
+      await fetch(`${ENV.API_URL}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
+      });
+      refreshData();
+      
+      // Optimistic update
+      const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
+      setJobs([newJob, ...jobs]);
+      setForm({ title: '', location: '', salary: '', category: 'Field' });
+    } catch (e) {
+      console.error("Failed to post job", e);
+      alert("Failed to post job.");
+    }
   };
 
   return (
@@ -396,9 +439,9 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        <div className="h-24 bg-slate-900 relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg">{mongoUser?.companyName || "Your Company"}</h2></div></div></div>
        <div className="mt-10 px-4 border-b flex space-x-6 text-sm font-medium text-slate-500 overflow-x-auto">{['Overview', 'RailOps', 'Jobs'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>))}</div>
        <div className="p-4">
-         {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats (Coming Soon)</div>}
+         {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
-         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
+         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
        </div>
     </div>
   );
@@ -412,16 +455,28 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   useEffect(() => { 
     if (mongoUser) {
         setFormData({ role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }); 
-        // Mock assignments
-        setMyAssignments([{_id: 'a1', trainId: 'Z-100', origin: 'NY', destination: 'Boston'}]);
+        if(mongoUser.email) {
+          fetch(`${ENV.API_URL}/my-assignments?email=${mongoUser.email}`)
+            .then(r => r.json())
+            .then(setMyAssignments)
+            .catch(err => console.error(err));
+        }
     }
   }, [mongoUser]);
 
   const handleSave = async () => { 
-      // Simulate save
-      alert("Profile Saved (Simulated)");
-      setIsEditing(false); 
-      refreshProfile(); 
+      try {
+        await fetch(`${ENV.API_URL}/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        setIsEditing(false); 
+        refreshProfile(); 
+      } catch (e) {
+        console.error("Save profile failed", e);
+        alert("Failed to save profile.");
+      }
   };
 
   return (
@@ -429,13 +484,13 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
        <div className="bg-white border-b pb-6 mb-4"><div className="h-24 bg-slate-900"></div><div className="px-4 -mt-10"><div className="flex justify-between"><img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white" />{!isEditing && <button onClick={() => setIsEditing(true)} className="mt-10 text-xs font-bold bg-slate-100 px-3 py-1 rounded">Edit</button>}</div><h2 className="text-xl font-bold mt-2">{user.fullName}</h2></div></div>
        <div className="px-4 space-y-4">
          {isEditing && <div className="bg-white p-4 rounded shadow"><select className="w-full border p-2 mb-2 rounded" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}><option value="individual">Individual</option><option value="company">Company</option></select><input className="w-full border p-2 mb-2" placeholder="Title/Company" value={formData.role === 'company' ? formData.companyName : formData.jobTitle} onChange={e => setFormData({...formData, [formData.role === 'company' ? 'companyName' : 'jobTitle']: e.target.value})} /><button onClick={handleSave} className="w-full bg-indigo-600 text-white py-2 rounded">Save</button></div>}
-         <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments.</p>}</div>
+         <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments found.</p>}</div>
        </div>
     </div>
   );
 };
 
-// --- MISSING VIEWS RESTORED ---
+// --- VIEWS ---
 const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
     <div className="pb-20 px-4 pt-6">
         <SectionTitle title="Tools" subtitle="Calculators & Decoders" />
@@ -514,25 +569,17 @@ const MainContent = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // ATTEMPT REAL FETCH, FALLBACK TO MOCK
-      // In production, this will try to hit the API_URL.
-      // In this preview, it will likely fail and catch to Mock Data.
-      try {
-          const [j, g, si] = await Promise.all([
-            fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
-            fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
-            fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
-          ]);
-          // If fetch returns empty (likely in preview), use mock
-          if (j.length === 0) throw new Error("Using Mock Data");
-          setData({ jobs: j, glossary: g, signals: si });
-      } catch (innerError) {
-          console.log("API Unavailable, using mock data.");
-          setData({ jobs: MOCK_JOBS, glossary: [], signals: MOCK_SIGNALS });
-      }
+      const [j, g, si] = await Promise.all([
+        fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
+      ]);
+      setData({ jobs: j, glossary: g, signals: si });
     } catch (e) { 
-      console.error(e); 
-      setData({ jobs: MOCK_JOBS, glossary: [], signals: [] });
+      console.error("API Fetch Error:", e);
+      // In production, you might want to show a toast or error state here
+      // For now, we leave the data empty rather than falling back to mock
+      setData({ jobs: [], glossary: [], signals: [] });
     } finally { setLoading(false); }
   };
 
@@ -540,8 +587,18 @@ const MainContent = () => {
   
   useEffect(() => {
     if (isSignedIn && user) {
-        // Simulate Mongo User Sync
-        setMongoUser({ ...user, role: 'company', companyName: 'RailCorp Inc' });
+        fetch(`${ENV.API_URL}/users/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            clerkId: user.id, 
+            email: user.primaryEmailAddress.emailAddress, 
+            fullName: user.fullName 
+          })
+        })
+        .then(res => res.json())
+        .then(setMongoUser)
+        .catch(err => console.error("User sync failed:", err));
     }
   }, [isSignedIn, user]);
 
@@ -549,7 +606,7 @@ const MainContent = () => {
     if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
   }, []);
 
-  const ADMIN = "wayne@railnology.com";
+  const ADMIN = ENV.ADMIN_EMAIL;
   if (selectedJob) return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
 
   return (
@@ -572,6 +629,10 @@ const MainContent = () => {
   );
 };
 
-// Use the Mock Clerk Provider for now 
-const App = () => (<ClerkProvider publishableKey={ENV.CLERK_KEY}><MainContent /></ClerkProvider>);
+const App = () => (
+  // Ensure CLERK_KEY is valid. If it's missing, ClerkProvider will throw an error in dev console.
+  <ClerkProvider publishableKey={ENV.CLERK_KEY}>
+    <MainContent />
+  </ClerkProvider>
+);
 export default App;
