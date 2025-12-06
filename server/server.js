@@ -119,7 +119,7 @@ app.get('/api/schedules', async (req, res) => {
   res.json(schedules);
 });
 
-// ✅ FIXED ASSIGNMENT ROUTE (Resolves 500 Error)
+// ✅ BULLETPROOF ASSIGNMENT ROUTE
 app.post('/api/schedules/:id/assign', async (req, res) => {
   try {
     const { crewId } = req.body;
@@ -129,19 +129,25 @@ app.post('/api/schedules/:id/assign', async (req, res) => {
     const schedule = await Schedule.findById(req.params.id);
     if (!schedule) return res.status(404).json({ error: "Schedule not found. Please refresh." });
 
-    // 2. Check for Duplicates (using String comparison for safety)
-    const alreadyAssigned = schedule.assignedCrew.some(id => id.toString() === crewId);
+    // 2. Initialize array if missing (Safety Check)
+    if (!schedule.assignedCrew) {
+        schedule.assignedCrew = [];
+    }
+
+    // 3. Check for Duplicates (using String comparison for safety)
+    // Also filters out any potential nulls in the array to prevent crashes
+    const alreadyAssigned = schedule.assignedCrew.some(id => id && id.toString() === crewId);
 
     if (!alreadyAssigned) {
-      // 3. Assign Crew
+      // 4. Assign Crew
       schedule.assignedCrew.push(crewId);
       await schedule.save();
       
-      // 4. Update Crew Status
+      // 5. Update Crew Status
       await Crew.findByIdAndUpdate(crewId, { status: 'On Duty' });
     }
 
-    // 5. Return Populated Schedule (So UI updates names immediately)
+    // 6. Return Populated Schedule (So UI updates names immediately)
     const populatedSchedule = await Schedule.findById(req.params.id).populate('assignedCrew');
     res.json(populatedSchedule);
 
