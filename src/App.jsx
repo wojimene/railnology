@@ -684,7 +684,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
+// --- AI CHAT COMPONENT ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
