@@ -10,19 +10,54 @@ import {
   Play, Radio, Info, Smartphone, Monitor
 } from 'lucide-react';
 
-// ✅ PRODUCTION: Real Authentication Import
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// ==========================================
+// 1. AUTHENTICATION (PRODUCTION SWITCH)
+// ==========================================
+
+/* [PRODUCTION INSTRUCTION]: 
+   When deploying to Render/Vercel:
+   1. UNCOMMENT the import below.
+   2. DELETE the "PREVIEW SHIM" block entirely.
+*/
+
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+
+/* --- START: PREVIEW SHIM (Keep this for Preview, Delete for Production) --- */
+const ClerkProvider = ({ children }) => <>{children}</>;
+const SignedIn = ({ children }) => <>{children}</>;
+const SignedOut = ({ children }) => null;
+const SignInButton = () => <button>Sign In</button>;
+const UserButton = () => <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">US</div>;
+const useUser = () => ({ 
+  isSignedIn: true, 
+  user: { 
+    id: "user_123", 
+    fullName: "Rail Pro", 
+    primaryEmailAddress: { emailAddress: "demo@railnology.com" } 
+  } 
+});
+
+// Safe Environment Variable Access for Preview
+const getEnv = (key, fallback) => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return import.meta.env[key] || fallback;
+    }
+  } catch (e) {}
+  return fallback;
+};
+/* --- END: PREVIEW SHIM --- */
+
 
 // ==========================================
-// 1. CONFIGURATION & ENVIRONMENT
+// 2. CONFIGURATION & ENVIRONMENT
 // ==========================================
 
 const ENV = {
-  // Standard Vite Production Environment Access
-  API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
-  CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
-  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
-  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
+  API_URL: getEnv('VITE_API_URL', 'https://api.railnology.com'),
+  CLERK_KEY: getEnv('VITE_CLERK_KEY', 'pk_test_placeholder'), 
+  STRIPE_LINK: getEnv('VITE_STRIPE_PAYMENT_LINK', '#'),
+  ADMIN_EMAIL: getEnv('VITE_ADMIN_EMAIL', 'wayne@railnology.com')
 };
 
 const BRAND = {
@@ -32,18 +67,8 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
-// --- DEVICE ID UTILITY ---
-const getDeviceId = () => {
-    let id = localStorage.getItem('railnology_device_id');
-    if (!id) {
-        id = 'dev_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('railnology_device_id', id);
-    }
-    return id;
-};
-
 // ==========================================
-// 2. HELPER FUNCTIONS
+// 3. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
@@ -63,7 +88,7 @@ const getCompensation = (job) => {
 };
 
 // ==========================================
-// 3. SUB-COMPONENTS
+// 4. SUB-COMPONENTS
 // ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
@@ -335,7 +360,9 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     setLoading(true);
 
     try {
-      const deviceId = getDeviceId();
+      // Mock ID for preview environment if getDeviceId is missing, or implement it
+      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'preview_dev') : 'preview_dev';
+      
       const payload = { 
           query: userMsg, 
           userId: user?.id, 
@@ -400,3 +427,267 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                 <h3 className="text-sm font-bold text-slate-800">Railly AI</h3>
                 <p className="text-[10px] text-slate-500">{contextFilter ? 'Focused Search' : 'Full Compliance Mode'}</p>
             </div>
+          </div>
+       </div>
+
+       {/* Chat Area - FULL WIDTH, NO FRAME FOR AI */}
+       <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
+         {messages.map((m, i) => (
+           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
+              <div className={`text-sm leading-relaxed ${
+                  m.role === 'user' 
+                  ? 'max-w-[85%] p-3.5 rounded-2xl bg-slate-900 text-white rounded-br-none shadow-sm' 
+                  : 'w-full text-slate-800 pl-1' 
+              }`}>
+                 <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
+              
+              {/* SOURCE PILLS (UPDATED LOGIC) */}
+              {m.sources && m.sources.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
+                  {m.sources.map((source, idx) => {
+                    // Logic: Regulation if part > 0, otherwise Industry Info
+                    const isRegulation = source.source_type === "Regulation" || (source.part > 0);
+                    
+                    return (
+                      <a 
+                        key={idx}
+                        href={isRegulation ? `https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}` : '#'}
+                        target={isRegulation ? "_blank" : undefined}
+                        rel="noreferrer"
+                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${
+                            isRegulation 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
+                        {isRegulation 
+                            ? `§ ${source.part}.${source.section}` 
+                            : source.title || "Industry Info"
+                        }
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+           </div>
+         ))}
+         {loading && (
+           <div className="flex items-center text-xs text-slate-400 mt-2 pl-1 animate-pulse">
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce delay-75"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
+           </div>
+         )}
+         <div ref={scrollRef} className="h-1" />
+       </div>
+
+       <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
+         <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
+            <input 
+              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
+              placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Railly..."}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            <button 
+                onClick={handleSend} 
+                disabled={loading} 
+                className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-90"
+            >
+                <ArrowRight className="w-4 h-4" />
+            </button>
+         </div>
+       </div>
+    </div>
+  );
+};
+
+// --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
+const LibraryView = ({ onPaywall, onConflict }) => {
+    const [selectedContext, setSelectedContext] = useState(null);
+
+    const manuals = [
+        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', part: 213 },
+        { id: '236', name: 'Signals', icon: Zap, color: 'bg-amber-500', part: 236 },
+        { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', part: 229 },
+        { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-indigo-500', part: 217 },
+        { id: '214', name: 'Workplace', icon: Shield, color: 'bg-rose-500', part: 214 },
+        { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-purple-500', part: 219 },
+    ];
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+            {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
+                <SectionTitle title="Library" subtitle="AI Research & Manuals" />
+                <div className="grid grid-cols-3 gap-4 mb-2">
+                    <button 
+                        onClick={() => setSelectedContext(null)}
+                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
+                    >
+                        <div className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center shadow-md mb-1 border border-slate-700 active:scale-95 transition-transform">
+                            <Globe className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
+                    </button>
+                    {manuals.map(m => (
+                        <button 
+                            key={m.id}
+                            onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
+                            className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
+                        >
+                            <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
+                                <m.icon className="w-6 h-6" />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
+            <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
+                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} />
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN CONTENT ---
+const MainContent = () => {
+  const [activeTab, setActiveTab] = useState('home');
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
+  const [isPro, setIsPro] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showConflict, setShowConflict] = useState(false); 
+  const [mongoUser, setMongoUser] = useState(null);
+  const { user, isSignedIn } = useUser();
+
+  const handleClaimDevice = async () => {
+      // Use local utility for preview safety
+      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
+      
+      await fetch(`${ENV.API_URL}/users/claim-device`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, deviceId })
+      });
+      setShowConflict(false);
+      alert("Device claimed. Please retry your search.");
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [j, g, si] = await Promise.all([
+        fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
+      ]);
+      setData({ jobs: j, glossary: g, signals: si });
+    } catch (e) { 
+      console.error("API Fetch Error:", e);
+      setData({ jobs: [], glossary: [], signals: [] });
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+  
+  useEffect(() => {
+    if (isSignedIn && user) {
+        const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
+        
+        // Sync user and send device ID
+        fetch(`${ENV.API_URL}/users/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            clerkId: user.id, 
+            email: user.primaryEmailAddress.emailAddress, 
+            fullName: user.fullName,
+            deviceId 
+          })
+        })
+        .then(res => res.json())
+        .then(setMongoUser)
+        .catch(err => console.error("User sync failed:", err));
+    }
+  }, [isSignedIn, user]);
+
+  useEffect(() => {
+    if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
+  }, []);
+
+  const ADMIN = ENV.ADMIN_EMAIL;
+  if (selectedJob) return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
+      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
+      <style>{`
+        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}</style>
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
+      
+      {/* Mobile Constraint Container */}
+      <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
+        <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
+        
+        {/* Main View Area - Handles Scrolling Logic */}
+        <div className={`flex-1 overflow-hidden relative flex flex-col`}>
+          {activeTab === 'home' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
+                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />
+             </div>
+          )}
+          {activeTab === 'jobs' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />
+             </div>
+          )}
+          
+          {/* Library View passes error handlers to Chat */}
+          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
+          
+          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
+          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
+          
+          {/* RESTORED TOOLS VIEW */}
+          {activeTab === 'tools' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
+             </div>
+          )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
+            <div className="flex justify-between items-center h-20">
+                <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />
+                {mongoUser?.role === 'company' && <TabButton active={activeTab} id="company" icon={Building2} label="Dash" onClick={setActiveTab} />}
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const App = () => (
+  <ClerkProvider publishableKey={ENV.CLERK_KEY}>
+    <MainContent />
+  </ClerkProvider>
+);
+export default App;
