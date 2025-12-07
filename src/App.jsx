@@ -211,8 +211,8 @@ const SafetyMinuteCard = () => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (RAG + AUTO-SCROLL) ---
-const AIChat = ({ contextFilter }) => {
+// --- AI CHAT COMPONENT (FLEXIBLE HEIGHT) ---
+const AIChat = ({ contextFilter, className }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
     { role: 'system', text: contextFilter ? `Railly active. Focused on: ${contextFilter.name}` : "Hello! I am Railly. Ask me about 49 CFR regulations." }
@@ -274,7 +274,7 @@ const AIChat = ({ contextFilter }) => {
   };
 
   return (
-    <div className="flex flex-col h-[60vh] bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm relative">
+    <div className={`flex flex-col bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm relative ${className || 'h-[60vh]'}`}>
        {/* Context Badge */}
        {contextFilter && (
          <div className="absolute top-14 left-0 right-0 flex justify-center pointer-events-none z-10">
@@ -296,7 +296,8 @@ const AIChat = ({ contextFilter }) => {
           </div>
        </div>
 
-       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+       {/* Chat Area - Scrollbar Styling Injected Here */}
+       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth scrollbar-thin">
          {messages.map((m, i) => (
            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
@@ -357,7 +358,7 @@ const AIChat = ({ contextFilter }) => {
   );
 };
 
-// --- LIBRARY VIEW (APP GRID STYLE) ---
+// --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
 const LibraryView = () => {
     const [selectedContext, setSelectedContext] = useState(null);
 
@@ -371,19 +372,19 @@ const LibraryView = () => {
     ];
 
     return (
-        <div className="pb-24 pt-6 px-4">
-            <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-            
-            {/* APP GRID (VERTICAL) */}
-            <div className="mb-8">
-                <div className="grid grid-cols-3 gap-y-6 gap-x-2">
+        <div className="flex flex-col h-full bg-slate-50">
+            {/* 1. TOP SECTION: MANUALS GRID */}
+            {/* flex-shrink-0 ensures this section doesn't scroll offscreen */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-2">
+                <SectionTitle title="Library" subtitle="AI Research & Manuals" />
+                <div className="grid grid-cols-3 gap-y-4 gap-x-3 mb-2">
                     {/* "All" Button */}
                     <button 
                         onClick={() => setSelectedContext(null)}
-                        className={`flex flex-col items-center transition-opacity ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
+                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100 scale-105' : 'opacity-60 scale-100'}`}
                     >
-                        <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center shadow-md mb-2 border-2 border-slate-700 active:scale-95 transition-transform">
-                            <Globe className="w-7 h-7 text-white" />
+                        <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center shadow-md mb-1.5 border-2 border-slate-700 active:scale-95 transition-transform">
+                            <Globe className="w-6 h-6 text-white" />
                         </div>
                         <span className="text-[10px] font-bold text-slate-700">All Content</span>
                     </button>
@@ -393,11 +394,11 @@ const LibraryView = () => {
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
                             className={`flex flex-col items-center transition-all ${
-                                selectedContext?.id === m.id ? 'scale-110 opacity-100' : selectedContext ? 'opacity-40 scale-95' : 'opacity-100'
+                                selectedContext?.id === m.id ? 'scale-105 opacity-100' : selectedContext ? 'opacity-50 scale-95' : 'opacity-100'
                             }`}
                         >
-                            <div className={`${m.color} w-16 h-16 rounded-2xl flex items-center justify-center shadow-md mb-2 text-white active:scale-95 transition-transform`}>
-                                <m.icon className="w-7 h-7" />
+                            <div className={`${m.color} w-14 h-14 rounded-2xl flex items-center justify-center shadow-md mb-1.5 text-white active:scale-95 transition-transform`}>
+                                <m.icon className="w-6 h-6" />
                             </div>
                             <span className="text-[10px] font-bold text-slate-700 text-center leading-tight">{m.name}</span>
                         </button>
@@ -405,8 +406,11 @@ const LibraryView = () => {
                 </div>
             </div>
 
-            {/* CHAT INTERFACE */}
-            <AIChat contextFilter={selectedContext} />
+            {/* 2. BOTTOM SECTION: RAILLY (Fills remaining space) */}
+            {/* flex-1 min-h-0 ensures it fills space but doesn't overflow parent */}
+            <div className="flex-1 min-h-0 px-4 pb-4">
+                <AIChat contextFilter={selectedContext} className="h-full shadow-md" />
+            </div>
         </div>
     );
 };
@@ -514,20 +518,39 @@ const MainContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
+      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
+      <style>{`
+        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}</style>
+
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       
       {/* Mobile Constraint Container */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         <Header onProfileClick={() => setActiveTab('profile')} isOffline={false} isPro={isPro} />
         
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {activeTab === 'home' && isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
-          {activeTab === 'home' && <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />}
-          {activeTab === 'company' && mongoUser?.role === 'company' ? <CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /> : null}
-          {activeTab === 'profile' && isSignedIn ? <ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /> : null}
-          {activeTab === 'jobs' && <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />}
-          {activeTab === 'tools' && <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
+        {/* Main View Area - Handles Scrolling Logic */}
+        <div className={`flex-1 overflow-hidden relative flex flex-col`}>
+          {activeTab === 'home' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
+                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />
+             </div>
+          )}
+          {activeTab === 'jobs' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />
+             </div>
+          )}
+          
+          {/* Library View is special: it handles its own internal layout */}
           {activeTab === 'learn' && <LibraryView />}
+          
+          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
+          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
+          {activeTab === 'tools' && <div className="flex-1 overflow-y-auto"><ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} /></div>}
         </div>
 
         {/* Bottom Navigation */}
