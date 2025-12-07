@@ -67,6 +67,16 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
+// --- DEVICE ID UTILITY ---
+const getDeviceId = () => {
+    let id = localStorage.getItem('railnology_device_id');
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('railnology_device_id', id);
+    }
+    return id;
+};
+
 // ==========================================
 // 3. HELPER FUNCTIONS
 // ==========================================
@@ -85,16 +95,6 @@ const getCompensation = (job) => {
   const t = job.title?.toLowerCase() || "";
   for (const [k, r] of Object.entries(MARKET_RATES)) if (t.includes(k)) return r;
   return "DOE";
-};
-
-// --- DEVICE ID UTILITY ---
-const getDeviceId = () => {
-    let id = localStorage.getItem('railnology_device_id');
-    if (!id) {
-        id = 'dev_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('railnology_device_id', id);
-    }
-    return id;
 };
 
 // ==========================================
@@ -339,7 +339,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
+// --- AI CHAT COMPONENT ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -349,12 +349,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const scrollRef = useRef(null);
   const { user } = useUser();
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   useEffect(() => {
     if (contextFilter) {
@@ -789,13 +784,13 @@ const MainContent = () => {
         {/* Main View Area - Handles Scrolling Logic */}
         <div className={`flex-1 overflow-hidden relative flex flex-col`}>
           {activeTab === 'home' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
                 {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
                 <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />
              </div>
           )}
           {activeTab === 'jobs' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
                 <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />
              </div>
           )}
@@ -803,12 +798,12 @@ const MainContent = () => {
           {/* Library View passes error handlers to Chat */}
           {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
           
-          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
-          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
+          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
+          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
           
           {/* RESTORED TOOLS VIEW */}
           {activeTab === 'tools' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
              </div>
           )}
