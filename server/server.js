@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+dotenv.config(); 
+
 import express from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import OpenAI from 'openai';
@@ -6,65 +8,31 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// ==========================================
-// 🔧 ENVIRONMENT SETUP
-// ==========================================
-
-// Resolve current directory for ES Modules
+// Environment Setup
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Explicitly load .env from the ROOT directory (one level up from /server)
-const envPath = path.resolve(__dirname, '../.env');
-const envResult = dotenv.config({ path: envPath });
-
-if (envResult.error) {
-  console.warn(`⚠️  Warning: Could not find .env file at: ${envPath}`);
-} else {
-  console.log(`✅ Loaded configuration from: ${envPath}`);
-}
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
-
-// Middleware
 app.use(express.json());
 app.use(cors()); 
 
-// ==========================================
-// 1. SERVER CONFIGURATION
-// ==========================================
+// Configuration
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-// Database Constants
-const DB_NAME = "railnology"; // Lowercase to match your existing production DB
+const DB_NAME = "railnology";
 const COLLECTION_KNOWLEDGE = "knowledge_chunks";
 const VECTOR_INDEX_NAME = "default"; 
 
-// --- CONFIGURATION VALIDATION ---
 if (!MONGO_URI || !OPENAI_API_KEY) {
   console.error("❌ FATAL ERROR: Missing MONGO_URI or OPENAI_API_KEY.");
-  console.error(`   Checked for .env at: ${envPath}`);
-  process.exit(1);
-}
-
-// Specific check for the placeholder error you are seeing
-if (MONGO_URI.includes("YOUR_CLUSTER") || MONGO_URI.includes("YOUR_USER")) {
-  console.error("\n❌ CONFIGURATION ERROR: Placeholders detected!");
-  console.error("---------------------------------------------------");
-  console.error("The .env file contains default values (YOUR_CLUSTER).");
-  console.error("You must open 'C:\\railnology\\.env' and paste your REAL MongoDB connection string.");
-  console.error("---------------------------------------------------\n");
   process.exit(1);
 }
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 let db;
 
-// ==========================================
-// 2. DATABASE CONNECTION
-// ==========================================
 MongoClient.connect(MONGO_URI)
   .then(client => {
     db = client.db(DB_NAME);
@@ -76,39 +44,69 @@ MongoClient.connect(MONGO_URI)
     process.exit(1);
   });
 
-// ==========================================
-// 3. API ROUTER
-// ==========================================
 const api = express.Router();
 
 async function getEmbedding(text) {
-  try {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: text.replace(/\n/g, " "),
-    });
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error("⚠️ OpenAI Embedding Error:", error);
-    throw error;
-  }
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text.replace(/\n/g, " "),
+  });
+  return response.data[0].embedding;
 }
 
-// --- RAILLY CHAT ENDPOINT (RAG) ---
+// ==========================================
+// 🧠 RAILLY CHAT (RAG + USAGE CONTROLS)
+// ==========================================
 api.post('/chat', async (req, res) => {
   try {
-    const { query, filterPart } = req.body;
+    const { query, filterPart, userId, deviceId } = req.body;
+    
     if (!query) return res.status(400).json({ error: "Query required" });
+    if (!userId || !deviceId) return res.status(400).json({ error: "User/Device identification required" });
 
-    console.log(`🔍 Railly Processing: "${query}"`);
+    // 1. FETCH USER CONTEXT
+    const users = db.collection('users');
+    const user = await users.findOne({ clerkId: userId });
 
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // 2. DEVICE CONCURRENCY CHECK
+    // If the active device in DB doesn't match the requester, block access.
+    if (user.activeDeviceId && user.activeDeviceId !== deviceId) {
+        return res.status(409).json({ 
+            error: "Session active on another device.",
+            code: "DEVICE_CONFLICT" 
+        });
+    }
+
+    // 3. USAGE LIMIT CHECK (10 per 24h)
+    const now = new Date();
+    const lastDate = user.lastQueryDate ? new Date(user.lastQueryDate) : new Date(0);
+    const isSameDay = now.toDateString() === lastDate.toDateString();
+    
+    // Reset count if new day
+    let currentCount = isSameDay ? (user.dailyQueryCount || 0) : 0;
+
+    // Check Limit (10 for Free, Unlimited for Pro)
+    // NOTE: In production, 'role' or a specific 'isPro' flag determines this.
+    // For now, we assume 'company' role implies Pro, or check a flag.
+    const isPro = user.role === 'company' || user.isPro === true;
+    const DAILY_LIMIT = 10;
+
+    if (!isPro && currentCount >= DAILY_LIMIT) {
+        return res.status(402).json({ 
+            error: "Daily limit reached.",
+            code: "PAYMENT_REQUIRED"
+        });
+    }
+
+    // 4. PERFORM VECTOR SEARCH
+    console.log(`🔍 Railly Processing: "${query}" (Count: ${currentCount + 1}/${DAILY_LIMIT})`);
+    
     const queryVector = await getEmbedding(query);
     const collection = db.collection(COLLECTION_KNOWLEDGE);
     
-    // Construct Aggregation Pipeline
     const pipeline = [];
-
-    // 1. Vector Search
     const searchStep = {
       "$vectorSearch": {
         "index": VECTOR_INDEX_NAME,
@@ -120,186 +118,146 @@ api.post('/chat', async (req, res) => {
     };
 
     if (filterPart) {
-        searchStep["$vectorSearch"]["filter"] = {
-            "part": { "$eq": filterPart } 
-        };
+        searchStep["$vectorSearch"]["filter"] = { "part": { "$eq": filterPart } };
     }
     pipeline.push(searchStep);
-
-    // 2. Projection
     pipeline.push({
       "$project": {
-        "_id": 0,
-        "part": 1,
-        "section_id": 1,
-        "text": 1,
-        "title": 1,       
-        "source_type": 1, 
+        "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "source_type": 1,
         "score": { "$meta": "vectorSearchScore" }
       }
     });
     
     const results = await collection.aggregate(pipeline).toArray();
 
-    // 3. Build Context & Sources
-    let contextText = "";
-    let sources = [];
+    // 5. GENERATE ANSWER
+    let contextText = results.length > 0 
+        ? results.map(doc => `[Source: 49 CFR § ${doc.part}.${doc.section_id}]\n${doc.text}`).join("\n\n")
+        : "No specific regulations found.";
+    
+    let sources = results.map(doc => ({ 
+        part: doc.part, section: doc.section_id, title: doc.title, source_type: doc.source_type, score: doc.score 
+    }));
 
-    if (results.length > 0) {
-      contextText = results.map(doc => {
-        const label = doc.part > 0 ? `49 CFR § ${doc.part}.${doc.section_id}` : `INDUSTRY INFO: ${doc.title}`;
-        return `[Source: ${label}]\n${doc.text}`;
-      }).join("\n\n");
-
-      sources = results.map(doc => ({ 
-        part: doc.part, 
-        section: doc.section_id, 
-        title: doc.title,
-        source_type: doc.source_type,
-        score: doc.score 
-      }));
-    } else {
-      contextText = "No specific regulations or industry data found matching this query.";
-    }
-
-    // 4. Generate Answer
-    const systemPrompt = `
-      You are Railly, an expert Federal Railroad Administration (FRA) compliance assistant.
-      
-      INSTRUCTIONS:
-      1. Use the provided "CONTEXT" to answer.
-      2. Cite your sources explicitly.
-      3. Distinguish between Federal Law (Mandatory) and Industry Standards (Best Practice).
-      4. Keep answers professional and concise.
-      
-      CONTEXT:
-      ${contextText}
-    `;
+    const systemPrompt = `You are Railly, an expert FRA compliance assistant. Use the CONTEXT to answer. Cite sources. CONTEXT: ${contextText}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview", 
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: query }
-      ],
-      temperature: 0.1 
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
+      temperature: 0.1
     });
+
+    // 6. UPDATE USAGE METRICS
+    await users.updateOne(
+        { clerkId: userId },
+        { 
+            $set: { 
+                dailyQueryCount: currentCount + 1, 
+                lastQueryDate: now,
+                activeDeviceId: deviceId // Refresh active status
+            } 
+        }
+    );
 
     res.json({ answer: completion.choices[0].message.content, sources });
 
   } catch (error) {
-    console.error("❌ Chat Endpoint Error:", error);
+    console.error("❌ Chat Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// --- CORE PLATFORM ENDPOINTS ---
+// ==========================================
+// 👤 USER MANAGEMENT & DEVICE CONTROL
+// ==========================================
 
-api.get('/jobs', async (req, res) => {
-  try {
-    const jobs = await db.collection('jobs').find({}).sort({ postedAt: -1 }).toArray();
-    res.json(jobs);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.post('/jobs', async (req, res) => {
-  try {
-    const newJob = { ...req.body, postedAt: new Date() };
-    const result = await db.collection('jobs').insertOne(newJob);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.get('/glossary', async (req, res) => {
-  try {
-    const terms = await db.collection('glossary').find({}).toArray();
-    res.json(terms);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.get('/signals', async (req, res) => {
-  try {
-    const signals = await db.collection('signals').find({}).toArray();
-    res.json(signals);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.get('/schedules', async (req, res) => {
-  try {
-    const schedules = await db.collection('schedules').find({}).toArray();
-    res.json(schedules);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.get('/crew', async (req, res) => {
-  try {
-    const crew = await db.collection('crew').find({}).toArray();
-    res.json(crew);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.post('/schedules/:id/assign', async (req, res) => {
-  try {
-    const { crewId } = req.body;
-    const scheduleId = req.params.id;
-    const crewMember = await db.collection('crew').findOne({ _id: new ObjectId(crewId) });
-    if (!crewMember) return res.status(404).json({error: "Crew not found"});
-
-    await db.collection('schedules').updateOne(
-      { _id: new ObjectId(scheduleId) },
-      { $push: { assignedCrew: crewMember } }
-    );
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-api.post('/schedules/:id/unassign', async (req, res) => {
-  try {
-    const { crewId } = req.body;
-    const scheduleId = req.params.id;
-    await db.collection('schedules').updateOne(
-      { _id: new ObjectId(scheduleId) },
-      { $pull: { assignedCrew: { _id: new ObjectId(crewId) } } } 
-    );
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
+// Sync User (and initialize device)
 api.post('/users/sync', async (req, res) => {
   try {
-    const { clerkId, email, fullName } = req.body;
+    const { clerkId, email, fullName, deviceId } = req.body;
     const users = db.collection('users');
     const existing = await users.findOne({ clerkId });
-    if (existing) return res.json(existing);
-    const newUser = { clerkId, email, fullName, role: 'individual', createdAt: new Date() };
+    
+    if (existing) {
+        // If syncing, we allow updating the active device logic here?
+        // Usually sync happens on login. We can auto-claim device on login.
+        if (deviceId) {
+            await users.updateOne({ clerkId }, { $set: { activeDeviceId: deviceId } });
+        }
+        return res.json(existing);
+    }
+    
+    const newUser = { 
+        clerkId, email, fullName, 
+        role: 'individual', 
+        isPro: false,
+        dailyQueryCount: 0,
+        activeDeviceId: deviceId, // Set initial device
+        createdAt: new Date() 
+    };
     await users.insertOne(newUser);
     res.json(newUser);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-api.put('/users/:clerkId', async (req, res) => {
-  try {
-    const { clerkId } = req.params;
-    const updateData = req.body;
-    delete updateData._id; 
-    await db.collection('users').updateOne({ clerkId }, { $set: updateData });
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+// Claim Device (Kick other sessions)
+api.post('/users/claim-device', async (req, res) => {
+    try {
+        const { userId, deviceId } = req.body;
+        if (!userId || !deviceId) return res.status(400).json({ error: "Missing data" });
+
+        await db.collection('users').updateOne(
+            { clerkId: userId },
+            { $set: { activeDeviceId: deviceId } }
+        );
+        res.json({ success: true, message: "Device claimed successfully." });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- STANDARD ENDPOINTS (Jobs, Glossary, etc.) ---
+api.get('/jobs', async (req, res) => {
+  const jobs = await db.collection('jobs').find({}).sort({ postedAt: -1 }).toArray();
+  res.json(jobs);
+});
+api.post('/jobs', async (req, res) => {
+  const newJob = { ...req.body, postedAt: new Date() };
+  await db.collection('jobs').insertOne(newJob);
+  res.json(newJob);
+});
+api.get('/glossary', async (req, res) => {
+  const terms = await db.collection('glossary').find({}).toArray();
+  res.json(terms);
+});
+api.get('/signals', async (req, res) => {
+  const signals = await db.collection('signals').find({}).toArray();
+  res.json(signals);
+});
+api.get('/schedules', async (req, res) => {
+  const schedules = await db.collection('schedules').find({}).toArray();
+  res.json(schedules);
+});
+api.get('/crew', async (req, res) => {
+  const crew = await db.collection('crew').find({}).toArray();
+  res.json(crew);
+});
+api.post('/schedules/:id/assign', async (req, res) => {
+  const { crewId } = req.body;
+  const crewMember = await db.collection('crew').findOne({ _id: new ObjectId(crewId) });
+  await db.collection('schedules').updateOne({ _id: new ObjectId(req.params.id) }, { $push: { assignedCrew: crewMember } });
+  res.json({ success: true });
+});
+api.post('/schedules/:id/unassign', async (req, res) => {
+  const { crewId } = req.body;
+  await db.collection('schedules').updateOne({ _id: new ObjectId(req.params.id) }, { $pull: { assignedCrew: { _id: crewId } } }); // Loose match for ID
+  res.json({ success: true });
+});
 api.get('/my-assignments', async (req, res) => {
-  try {
-    const schedules = await db.collection('schedules').find({}).toArray();
-    res.json(schedules); 
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  const schedules = await db.collection('schedules').find({}).toArray();
+  res.json(schedules); 
 });
 
-// ==========================================
-// 4. MOUNT ROUTER
-// ==========================================
+// Mount & Error Handling
 app.use('/api', api);
-
 app.get('/', (req, res) => res.status(200).send('Railnology API is Live.'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
-
 app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));

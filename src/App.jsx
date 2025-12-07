@@ -7,7 +7,7 @@ import {
   Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, 
   Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, 
   ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock, Bot, Send,
-  Play, Radio
+  Play, Radio, Info, Smartphone, Monitor
 } from 'lucide-react';
 
 // ==========================================
@@ -103,20 +103,23 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   </button>
 );
 
-const Header = ({ isOffline, isPro, onProfileClick }) => (
+const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
   <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md flex-shrink-0`}>
     <div className="flex justify-between items-center">
-      <div className="flex items-center space-x-2">
+      <button 
+        onClick={onHomeClick} 
+        className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
+      >
         <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
           <Train className="w-5 h-5" />
         </div>
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight">{BRAND.name}</h1>
-          <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase">
+        <div className="text-left">
+          <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
+          <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase mt-0.5">
             Platform {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
           </p>
         </div>
-      </div>
+      </button>
       <div className="flex items-center space-x-3">
         <SignedOut>
           <SignInButton mode="modal">
@@ -214,13 +217,14 @@ const SafetyMinuteCard = () => (
 );
 
 // --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
-const AIChat = ({ contextFilter, className }) => {
+const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
     { role: 'system', text: contextFilter ? `Railly active. Focused on: ${contextFilter.name}` : "Hello! I am Railly. Ask me about 49 CFR regulations." }
   ]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const { user } = useUser();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -243,10 +247,15 @@ const AIChat = ({ contextFilter, className }) => {
     setLoading(true);
 
     try {
-      const payload = { query: userMsg };
-      if (contextFilter) {
-        payload.filterPart = contextFilter.part;
-      }
+      // Mock ID for preview environment if getDeviceId is missing, or implement it
+      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'preview_dev') : 'preview_dev';
+      
+      const payload = { 
+          query: userMsg, 
+          userId: user?.id, // Send Clerk ID (if logged in)
+          deviceId: deviceId 
+      };
+      if (contextFilter) payload.filterPart = contextFilter.part;
 
       const res = await fetch(`${ENV.API_URL}/chat`, {
         method: 'POST',
@@ -254,6 +263,19 @@ const AIChat = ({ contextFilter, className }) => {
         body: JSON.stringify(payload)
       });
       
+      // ERROR HANDLING (PAYWALL & CONFLICT)
+      if (res.status === 402) {
+          if (onPaywall) onPaywall(); // Limit Reached
+          setMessages(prev => [...prev, { role: 'ai', text: "🔒 Daily limit reached. Please upgrade to continue." }]);
+          return;
+      }
+      
+      if (res.status === 409) {
+          if (onConflict) onConflict(); // Device Conflict
+          setMessages(prev => [...prev, { role: 'ai', text: "⚠️ Session paused due to activity on another device." }]);
+          return;
+      }
+
       if (!res.ok) throw new Error('API Error');
       
       const data = await res.json();
@@ -305,25 +327,38 @@ const AIChat = ({ contextFilter, className }) => {
               <div className={`text-sm leading-relaxed ${
                   m.role === 'user' 
                   ? 'max-w-[85%] p-3.5 rounded-2xl bg-slate-900 text-white rounded-br-none shadow-sm' 
-                  : 'w-full text-slate-800 pl-1' // UPDATED: Full width, simple text for Railly
+                  : 'w-full text-slate-800 pl-1' 
               }`}>
                  <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
+              {/* SOURCE PILLS (UPDATED LOGIC) */}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
-                  {m.sources.map((source, idx) => (
-                    <a 
-                      key={idx}
-                      href={`https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full hover:bg-emerald-100 transition"
-                    >
-                      <Shield className="w-3 h-3 mr-1" />
-                      § {source.part}.{source.section}
-                    </a>
-                  ))}
+                  {m.sources.map((source, idx) => {
+                    // Logic: Regulation if part > 0, otherwise Industry Info
+                    const isRegulation = source.source_type === "Regulation" || (source.part > 0);
+                    
+                    return (
+                      <a 
+                        key={idx}
+                        href={isRegulation ? `https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}` : '#'}
+                        target={isRegulation ? "_blank" : undefined}
+                        rel="noreferrer"
+                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${
+                            isRegulation 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
+                        {isRegulation 
+                            ? `§ ${source.part}.${source.section}` 
+                            : source.title || "Industry Info"
+                        }
+                      </a>
+                    );
+                  })}
                 </div>
               )}
            </div>
@@ -361,7 +396,7 @@ const AIChat = ({ contextFilter, className }) => {
 };
 
 // --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
-const LibraryView = () => {
+const LibraryView = ({ onPaywall, onConflict }) => {
     const [selectedContext, setSelectedContext] = useState(null);
 
     const manuals = [
@@ -376,7 +411,6 @@ const LibraryView = () => {
     return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
             {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
-            {/* flex-shrink-0 ensures this section sizes to its content and doesn't shrink */}
             <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
                 <div className="grid grid-cols-3 gap-4 mb-2">
@@ -391,7 +425,7 @@ const LibraryView = () => {
                         <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
 
-                    {/* Display ALL manuals (No slicing) to populate the rows */}
+                    {/* Display ALL manuals */}
                     {manuals.map(m => (
                         <button 
                             key={m.id}
@@ -410,9 +444,13 @@ const LibraryView = () => {
             </div>
 
             {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
-            {/* flex-1 ensures it expands to fill the rest of the screen height */}
             <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
-                <AIChat contextFilter={selectedContext} className="h-full" />
+                <AIChat 
+                    contextFilter={selectedContext} 
+                    className="h-full" 
+                    onPaywall={onPaywall} 
+                    onConflict={onConflict}
+                />
             </div>
         </div>
     );
@@ -475,8 +513,22 @@ const MainContent = () => {
   const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
   const [isPro, setIsPro] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showConflict, setShowConflict] = useState(false); // NEW: Device Conflict State
   const [mongoUser, setMongoUser] = useState(null);
   const { user, isSignedIn } = useUser();
+
+  const handleClaimDevice = async () => {
+      // Use local utility for preview safety
+      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
+      
+      await fetch(`${ENV.API_URL}/users/claim-device`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, deviceId })
+      });
+      setShowConflict(false);
+      alert("Device claimed. Please retry your search.");
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -497,13 +549,17 @@ const MainContent = () => {
   
   useEffect(() => {
     if (isSignedIn && user) {
+        const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
+        
+        // Sync user and send device ID
         fetch(`${ENV.API_URL}/users/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             clerkId: user.id, 
             email: user.primaryEmailAddress.emailAddress, 
-            fullName: user.fullName 
+            fullName: user.fullName,
+            deviceId 
           })
         })
         .then(res => res.json())
@@ -529,10 +585,11 @@ const MainContent = () => {
       `}</style>
 
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
       {/* Mobile Constraint Container */}
-      <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
-        <Header onProfileClick={() => setActiveTab('profile')} isOffline={false} isPro={isPro} />
+      <div className="w-full max-w-[480px] h-[100dvh] bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
+        <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
         
         {/* Main View Area - Handles Scrolling Logic */}
         <div className={`flex-1 overflow-hidden relative flex flex-col`}>
@@ -548,8 +605,8 @@ const MainContent = () => {
              </div>
           )}
           
-          {/* Library View handles its own scrolling (split screen) */}
-          {activeTab === 'learn' && <LibraryView />}
+          {/* Library View passes error handlers to Chat */}
+          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
