@@ -87,6 +87,16 @@ const getCompensation = (job) => {
   return "DOE";
 };
 
+// --- DEVICE ID UTILITY ---
+const getDeviceId = () => {
+    let id = localStorage.getItem('railnology_device_id');
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('railnology_device_id', id);
+    }
+    return id;
+};
+
 // ==========================================
 // 4. SUB-COMPONENTS
 // ==========================================
@@ -657,14 +667,18 @@ const MainContent = () => {
   const { user, isSignedIn } = useUser();
 
   const handleClaimDevice = async () => {
-      const deviceId = getDeviceId();
-      await fetch(`${ENV.API_URL}/users/claim-device`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, deviceId })
-      });
-      setShowConflict(false);
-      alert("Device claimed. Please retry your search.");
+      try {
+        const deviceId = getDeviceId();
+        await fetch(`${ENV.API_URL}/users/claim-device`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, deviceId })
+        });
+        setShowConflict(false);
+        alert("Device claimed. Please retry your search.");
+      } catch (error) {
+        console.error("Failed to claim device:", error);
+      }
   };
 
   const fetchData = async () => {
