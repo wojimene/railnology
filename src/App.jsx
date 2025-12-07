@@ -375,11 +375,11 @@ const LibraryView = () => {
 
     return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-            {/* 1. TOP SECTION: MANUALS GRID (SCROLLABLE) */}
-            {/* flex-1 with overflow-y-auto makes this section scrollable independently */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 bg-white border-b border-slate-100 scrollbar-thin">
+            {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
+            {/* flex-shrink-0 ensures this section sizes to its content and doesn't shrink */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-2">
                     {/* "All" Button */}
                     <button 
                         onClick={() => setSelectedContext(null)}
@@ -391,6 +391,7 @@ const LibraryView = () => {
                         <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
 
+                    {/* Display ALL manuals (No slicing) to populate the rows */}
                     {manuals.map(m => (
                         <button 
                             key={m.id}
@@ -408,9 +409,9 @@ const LibraryView = () => {
                 </div>
             </div>
 
-            {/* 2. BOTTOM SECTION: RAILLY (FIXED HEIGHT) */}
-            {/* Stays at the bottom, takes 55% of screen height */}
-            <div className="h-[55%] flex-shrink-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
+            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
+            {/* flex-1 ensures it expands to fill the rest of the screen height */}
+            <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
                 <AIChat contextFilter={selectedContext} className="h-full" />
             </div>
         </div>
