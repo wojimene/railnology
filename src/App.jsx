@@ -374,13 +374,13 @@ const LibraryView = () => {
         <div className="pb-24 pt-6 px-4">
             <SectionTitle title="Library" subtitle="AI Research & Manuals" />
             
-            {/* APP GRID (Horizontal Scroll) */}
+            {/* APP GRID (VERTICAL) */}
             <div className="mb-8">
-                <div className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide -mx-4 px-4">
+                <div className="grid grid-cols-3 gap-y-6 gap-x-2">
                     {/* "All" Button */}
                     <button 
                         onClick={() => setSelectedContext(null)}
-                        className={`snap-start flex flex-col items-center min-w-[72px] transition-opacity ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
+                        className={`flex flex-col items-center transition-opacity ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
                     >
                         <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center shadow-md mb-2 border-2 border-slate-700 active:scale-95 transition-transform">
                             <Globe className="w-7 h-7 text-white" />
@@ -392,7 +392,7 @@ const LibraryView = () => {
                         <button 
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
-                            className={`snap-start flex flex-col items-center min-w-[72px] transition-all ${
+                            className={`flex flex-col items-center transition-all ${
                                 selectedContext?.id === m.id ? 'scale-110 opacity-100' : selectedContext ? 'opacity-40 scale-95' : 'opacity-100'
                             }`}
                         >
