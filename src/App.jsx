@@ -11,18 +11,18 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// 1. AUTHENTICATION & ENVIRONMENT (PREVIEW COMPATIBLE)
+// 1. AUTHENTICATION (PRODUCTION SWITCH)
 // ==========================================
 
 /* [PRODUCTION INSTRUCTION]: 
-   In your real local/deployment environment where 'npm install' has run:
-   1. Uncomment the real Clerk import below.
-   2. Delete the "PREVIEW SHIM" block.
+   When deploying to Render/Vercel:
+   1. UNCOMMENT the import below.
+   2. DELETE the "PREVIEW SHIM" block entirely.
 */
 
 // import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
-/* --- START: PREVIEW SHIM (Allows UI to render without node_modules) --- */
+/* --- START: PREVIEW SHIM (Keep this for Preview, Delete for Production) --- */
 const ClerkProvider = ({ children }) => <>{children}</>;
 const SignedIn = ({ children }) => <>{children}</>;
 const SignedOut = ({ children }) => null;
@@ -40,16 +40,18 @@ const useUser = () => ({
 // Safe Environment Variable Access for Preview
 const getEnv = (key, fallback) => {
   try {
-    // Check if import.meta.env exists (Vite Production)
     if (typeof import.meta !== 'undefined' && import.meta.env) {
       return import.meta.env[key] || fallback;
     }
-  } catch (e) {
-    // Ignore errors in environments that don't support import.meta
-  }
+  } catch (e) {}
   return fallback;
 };
 /* --- END: PREVIEW SHIM --- */
+
+
+// ==========================================
+// 2. CONFIGURATION & ENVIRONMENT
+// ==========================================
 
 const ENV = {
   API_URL: getEnv('VITE_API_URL', 'https://api.railnology.com'),
@@ -66,7 +68,7 @@ const BRAND = {
 };
 
 // ==========================================
-// 2. HELPER FUNCTIONS
+// 3. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
@@ -86,7 +88,7 @@ const getCompensation = (job) => {
 };
 
 // ==========================================
-// 3. SUB-COMPONENTS
+// 4. SUB-COMPONENTS
 // ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
@@ -102,7 +104,7 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
 );
 
 const Header = ({ isOffline, isPro, onProfileClick }) => (
-  <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md`}>
+  <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md flex-shrink-0`}>
     <div className="flex justify-between items-center">
       <div className="flex items-center space-x-2">
         <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
@@ -211,7 +213,7 @@ const SafetyMinuteCard = () => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FLEXIBLE HEIGHT) ---
+// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
 const AIChat = ({ contextFilter, className }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -274,7 +276,7 @@ const AIChat = ({ contextFilter, className }) => {
   };
 
   return (
-    <div className={`flex flex-col bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm relative ${className || 'h-[60vh]'}`}>
+    <div className={`flex flex-col bg-white overflow-hidden relative ${className || 'h-[60vh]'}`}>
        {/* Context Badge */}
        {contextFilter && (
          <div className="absolute top-14 left-0 right-0 flex justify-center pointer-events-none z-10">
@@ -284,7 +286,7 @@ const AIChat = ({ contextFilter, className }) => {
          </div>
        )}
 
-       <div className="bg-slate-50/80 backdrop-blur p-4 border-b border-slate-200 flex items-center justify-between sticky top-0 z-20">
+       <div className="bg-slate-50/80 backdrop-blur p-4 border-b border-slate-200 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 text-indigo-600 shadow-sm">
                 <Bot className="w-5 h-5" />
@@ -296,20 +298,20 @@ const AIChat = ({ contextFilter, className }) => {
           </div>
        </div>
 
-       {/* Chat Area - Scrollbar Styling Injected Here */}
-       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth scrollbar-thin">
+       {/* Chat Area - FULL WIDTH, NO FRAME FOR AI */}
+       <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
          {messages.map((m, i) => (
-           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
+              <div className={`text-sm leading-relaxed ${
                   m.role === 'user' 
-                  ? 'bg-slate-900 text-white rounded-br-none' 
-                  : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'
+                  ? 'max-w-[85%] p-3.5 rounded-2xl bg-slate-900 text-white rounded-br-none shadow-sm' 
+                  : 'w-full text-slate-800 pl-1' // UPDATED: Full width, simple text for Railly
               }`}>
                  <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
               {m.sources && m.sources.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2 max-w-[85%] justify-start">
+                <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
                   {m.sources.map((source, idx) => (
                     <a 
                       key={idx}
@@ -327,16 +329,16 @@ const AIChat = ({ contextFilter, className }) => {
            </div>
          ))}
          {loading && (
-           <div className="flex items-center text-xs text-slate-400 ml-4 animate-pulse">
-             <div className="w-2 h-2 bg-slate-400 rounded-full mr-1 animate-bounce"></div>
-             <div className="w-2 h-2 bg-slate-400 rounded-full mr-1 animate-bounce delay-75"></div>
-             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
+           <div className="flex items-center text-xs text-slate-400 mt-2 pl-1 animate-pulse">
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce delay-75"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
            </div>
          )}
          <div ref={scrollRef} className="h-1" />
        </div>
 
-       <div className="p-3 border-t border-slate-200 bg-white">
+       <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
          <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
             <input 
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
@@ -372,44 +374,43 @@ const LibraryView = () => {
     ];
 
     return (
-        <div className="flex flex-col h-full bg-slate-50">
+        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
             {/* 1. TOP SECTION: MANUALS GRID */}
-            {/* flex-shrink-0 ensures this section doesn't scroll offscreen */}
-            <div className="flex-shrink-0 px-4 pt-4 pb-2">
+            <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b border-slate-100 bg-white z-10">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                <div className="grid grid-cols-3 gap-y-4 gap-x-3 mb-2">
+                <div className="grid grid-cols-4 gap-4 mb-2">
                     {/* "All" Button */}
                     <button 
                         onClick={() => setSelectedContext(null)}
-                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100 scale-105' : 'opacity-60 scale-100'}`}
+                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center shadow-md mb-1.5 border-2 border-slate-700 active:scale-95 transition-transform">
-                            <Globe className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shadow-sm mb-1 border border-slate-700 active:scale-95 transition-transform">
+                            <Globe className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-[10px] font-bold text-slate-700">All Content</span>
+                        <span className="text-[9px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
 
-                    {manuals.map(m => (
+                    {manuals.slice(0, 3).map(m => (
                         <button 
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
                             className={`flex flex-col items-center transition-all ${
-                                selectedContext?.id === m.id ? 'scale-105 opacity-100' : selectedContext ? 'opacity-50 scale-95' : 'opacity-100'
+                                selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'
                             }`}
                         >
-                            <div className={`${m.color} w-14 h-14 rounded-2xl flex items-center justify-center shadow-md mb-1.5 text-white active:scale-95 transition-transform`}>
-                                <m.icon className="w-6 h-6" />
+                            <div className={`${m.color} w-12 h-12 rounded-xl flex items-center justify-center shadow-sm mb-1 text-white active:scale-95 transition-transform`}>
+                                <m.icon className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-700 text-center leading-tight">{m.name}</span>
+                            <span className="text-[9px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* 2. BOTTOM SECTION: RAILLY (Fills remaining space) */}
-            {/* flex-1 min-h-0 ensures it fills space but doesn't overflow parent */}
-            <div className="flex-1 min-h-0 px-4 pb-4">
-                <AIChat contextFilter={selectedContext} className="h-full shadow-md" />
+            <div className="flex-1 min-h-0 relative">
+                {/* We remove the margin/padding here so the chat feels attached to the bottom */}
+                <AIChat contextFilter={selectedContext} className="h-full border-t border-slate-200" />
             </div>
         </div>
     );
@@ -545,7 +546,7 @@ const MainContent = () => {
              </div>
           )}
           
-          {/* Library View is special: it handles its own internal layout */}
+          {/* Library View handles its own scrolling (split screen) */}
           {activeTab === 'learn' && <LibraryView />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
@@ -554,7 +555,7 @@ const MainContent = () => {
         </div>
 
         {/* Bottom Navigation */}
-        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50">
+        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
             <div className="flex justify-between items-center h-20">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
                 <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
