@@ -1,62 +1,27 @@
-import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Train, Globe, BookOpen, Briefcase, Wrench, Lock, Search, 
   ChevronRight, Calculator, AlertTriangle, ArrowRight, Star, 
   Zap, Menu, X, Eye, RotateCcw, Filter, Loader2, WifiOff, ServerCrash,
-  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock, Bot, Send
+  PlusCircle, Save, CheckCircle, Database, LogIn, User, Image as ImageIcon, 
+  Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, 
+  Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, 
+  ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock, Bot, Send
 } from 'lucide-react';
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
-// 1. AUTHENTICATION SETUP
+// 1. CONFIGURATION & ENVIRONMENT
 // ==========================================
 
-// 🅰️ REAL CLERK (UNCOMMENT THIS FOR PRODUCTION / LOCAL):
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-// 🅱️ MOCK CLERK (ACTIVE FOR PREVIEW - DELETE THIS LOCALLY):
-const MockAuthContext = createContext(null);
-const ClerkProvider = ({ children }) => {
-  const [user, setUser] = useState(null); 
-  return <MockAuthContext.Provider value={{ user, setUser }}>{children}</MockAuthContext.Provider>;
+const ENV = {
+  // Production environment variables
+  API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
+  CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
+  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
+  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
 };
-const useUser = () => {
-  const { user } = useContext(MockAuthContext);
-  return { user, isLoaded: true, isSignedIn: !!user };
-};
-const SignedIn = ({ children }) => { const { user } = useUser(); return user ? children : null; };
-const SignedOut = ({ children }) => { const { user } = useUser(); return !user ? children : null; };
-const SignInButton = ({ children }) => {
-  const { setUser } = useContext(MockAuthContext);
-  // Simulates logging in as the Admin for the preview
-  return React.cloneElement(children, { onClick: () => setUser({ primaryEmailAddress: { emailAddress: "wayne@railnology.com" }, fullName: "Wayne Admin", imageUrl: "https://i.pravatar.cc/150?img=11" }) });
-};
-const UserButton = () => {
-  const { setUser } = useContext(MockAuthContext);
-  return <button onClick={() => setUser(null)} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-white hover:bg-slate-700 transition"><User className="w-3 h-3"/> Sign Out</button>;
-};
-// ==========================================
 
-
-// ==========================================
-// 2. CONFIGURATION & SECRETS
-// ==========================================
-
-// 🅰️ PRODUCTION (UNCOMMENT THIS BLOCK FOR PRODUCTION):
-/*
-const API_URL = import.meta.env.VITE_API_URL;
-const CLERK_KEY = import.meta.env.VITE_CLERK_KEY;
-const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK;
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-*/
-
-// 🅱️ PREVIEW / LOCAL FALLBACK (ACTIVE FOR NOW):
-const API_URL = "http://localhost:5000/api";
-const CLERK_KEY = "pk_test_PASTE_YOUR_KEY_HERE"; 
-const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_YOUR_LINK"; 
-const ADMIN_EMAIL = "wayne@railnology.com";
-
-
-// --- Branding Constants ---
 const BRAND = {
   name: "Railnology",
   domain: "railnology.com",
@@ -64,21 +29,22 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
-// --- MARKET RATE DATA ---
-const MARKET_RATES = {
-  "conductor": "$60k - $85k", "engineer": "$75k - $110k", "dispatcher": "$80k - $105k", "mechanic": "$28 - $42/hr", "manager": "$95k - $130k"
-};
+// ==========================================
+// 2. HELPER FUNCTIONS
+// ==========================================
 
-// --- HELPER: Salary Formatter ---
 const formatSalary = (val) => {
   if (!val || val === "Competitive" || val === "DOE") return val || "DOE";
-  const num = parseFloat(val.replace(/[^0-9.]/g, ''));
+  const num = parseFloat(String(val).replace(/[^0-9.]/g, ''));
   return !isNaN(num) ? (num > 1000 ? `$${(num / 1000).toFixed(0)}k` : `$${num}/hr`) : val;
 };
 
 const getCompensation = (job) => {
+  const MARKET_RATES = {
+    "conductor": "$60k - $85k", "engineer": "$75k - $110k", "dispatcher": "$80k - $105k", "mechanic": "$28 - $42/hr", "manager": "$95k - $130k"
+  };
   if (job.salary && job.salary !== "Competitive" && job.salary !== "DOE") return formatSalary(job.salary);
-  const t = job.title.toLowerCase();
+  const t = job.title?.toLowerCase() || "";
   for (const [k, r] of Object.entries(MARKET_RATES)) if (t.includes(k)) return r;
   return "DOE";
 };
@@ -90,22 +56,15 @@ const formatDate = (dateString) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// --- FALLBACK DATA ---
-const FALLBACK_JOBS = [];
-const FALLBACK_GLOSSARY = [];
-const FALLBACK_STANDARDS = [];
-const FALLBACK_MANUALS = [];
-const FALLBACK_REGULATIONS = [];
-const FALLBACK_MANDATES = [];
-const FALLBACK_SIGNALS = [];
-
-// --- Components ---
+// ==========================================
+// 3. SUB-COMPONENTS
+// ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   <button 
     onClick={() => onClick(id)}
     className={`flex flex-col items-center justify-center w-full py-3 transition-all border-t-2 ${
-      active === id ? 'border-amber-500 text-slate-900 bg-slate-50' : 'border-transparent text-gray-400'
+      active === id ? 'border-amber-500 text-slate-900 bg-slate-50' : 'border-transparent text-gray-400 hover:text-gray-600'
     }`}
   >
     <Icon className={`w-5 h-5 mb-1 ${active === id ? 'stroke-[2.5px]' : ''}`} />
@@ -130,7 +89,7 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
       <div className="flex items-center space-x-3">
         <SignedOut>
           <SignInButton mode="modal">
-            <button className="text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+            <button className="text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-700 transition">
               <LogIn className="w-3 h-3 mr-1.5 inline" /> Sign In
             </button>
           </SignInButton>
@@ -138,11 +97,11 @@ const Header = ({ isOffline, isPro, onProfileClick }) => (
         <SignedIn>
            <button 
              onClick={onProfileClick} 
-             className="flex items-center text-xs font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10"
+             className="flex items-center text-xs font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg transition mr-2 border border-white/10 hover:bg-white/20"
            >
              <UserCircle className="w-4 h-4 mr-1.5" /> My Profile
            </button>
-           <UserButton afterSignOutUrl="/" />
+           <UserButton />
         </SignedIn>
       </div>
     </div>
@@ -198,9 +157,15 @@ const JobCard = ({ job, onClick }) => (
         <div className="flex gap-2 mt-2">
             <button className="text-[10px] bg-slate-50 text-slate-600 font-bold px-3 py-1.5 rounded border border-slate-200">View</button>
             {job.externalLink && (
-              <div className="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded">
+              <a 
+                href={job.externalLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded"
+              >
                 Apply
-              </div>
+              </a>
             )}
         </div>
       </div>
@@ -208,10 +173,11 @@ const JobCard = ({ job, onClick }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT ---
+// --- AI CHAT COMPONENT (UPDATED FOR RAG) ---
 const AIChat = () => {
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState([{ role: 'system', text: "Hello! I am your Compliance Copilot. Ask me about regulations, manuals, or standards." }]);
+  // UPDATED: Initial message now introduces Railly
+  const [messages, setMessages] = useState([{ role: 'system', text: "Hello! I am Railly, your Compliance Copilot. Ask me about 49 CFR regulations." }]);
   const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
@@ -222,14 +188,28 @@ const AIChat = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/chat`, {
+      const res = await fetch(`${ENV.API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: userMsg })
       });
+      
+      if (!res.ok) throw new Error('API Error');
+      
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'ai', text: data.answer }]);
+      
+      // Update state with answer and optionally sources
+      setMessages(prev => [
+        ...prev, 
+        { 
+          role: 'ai', 
+          text: data.answer,
+          sources: data.sources // New field from backend
+        }
+      ]);
+
     } catch (e) {
+      console.error(e);
       setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting to the knowledge base right now." }]);
     } finally {
       setLoading(false);
@@ -238,26 +218,56 @@ const AIChat = () => {
 
   return (
     <div className="flex flex-col h-[60vh] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-       <div className="bg-slate-50 p-3 border-b border-slate-200 flex items-center"><Bot className="w-4 h-4 mr-2 text-indigo-600" /><span className="text-xs font-bold text-slate-700">Compliance AI</span></div>
+       <div className="bg-slate-50 p-3 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center">
+            <Bot className="w-4 h-4 mr-2 text-indigo-600" />
+            {/* UPDATED: Header Title */}
+            <span className="text-xs font-bold text-slate-700">Railly AI</span>
+          </div>
+          <span className="text-[10px] text-slate-400">Powered by 49 CFR</span>
+       </div>
        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-               <div className={`max-w-[85%] p-3 rounded-lg text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 text-slate-700 rounded-bl-none'}`}>
-                  {m.text}
-               </div>
-            </div>
-          ))}
-          {loading && <div className="text-xs text-slate-400 animate-pulse ml-2">Thinking...</div>}
+         {messages.map((m, i) => (
+           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[85%] p-3 rounded-lg text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 text-slate-700 rounded-bl-none'}`}>
+                 <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
+              
+              {/* DISPLAY SOURCES IF AVAILABLE */}
+              {m.sources && m.sources.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2 max-w-[85%]">
+                  {m.sources.map((source, idx) => (
+                    <a 
+                      key={idx}
+                      href={`https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full hover:bg-emerald-100 transition"
+                      title={`Relevance Score: ${source.score.toFixed(2)}`}
+                    >
+                      <Shield className="w-3 h-3 mr-1" />
+                      § {source.part}.{source.section}
+                    </a>
+                  ))}
+                </div>
+              )}
+           </div>
+         ))}
+         {loading && (
+           <div className="flex items-center text-xs text-slate-400 ml-2">
+             <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Railly is thinking...
+           </div>
+         )}
        </div>
        <div className="p-3 border-t border-slate-200 flex gap-2">
-          <input 
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-            placeholder="Ask about 49 CFR..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          />
-          <button onClick={handleSend} disabled={loading} className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"><Send className="w-4 h-4" /></button>
+         <input 
+           className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+           placeholder="Ask Railly about Track Safety, Signals, etc..."
+           value={query}
+           onChange={(e) => setQuery(e.target.value)}
+           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+         />
+         <button onClick={handleSend} disabled={loading} className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"><Send className="w-4 h-4" /></button>
        </div>
     </div>
   );
@@ -278,7 +288,7 @@ const PaywallModal = ({ onClose }) => {
         </p>
         <div className="space-y-3">
           <a 
-            href={STRIPE_PAYMENT_LINK} 
+            href={ENV.STRIPE_LINK} 
             target="_blank" 
             rel="noreferrer"
             className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
@@ -357,24 +367,49 @@ const RailOpsView = () => {
 
   const loadData = async () => {
     const t = Date.now();
-    const fetchUrl = viewMode === 'history' ? `${API_URL}/schedules?type=history&t=${t}` : `${API_URL}/schedules?t=${t}`;
+    const fetchUrl = viewMode === 'history' ? `${ENV.API_URL}/schedules?type=history&t=${t}` : `${ENV.API_URL}/schedules?t=${t}`;
+    
     try {
-      const [res1, res2] = await Promise.all([fetch(`${API_URL}/crew?t=${t}`), fetch(fetchUrl)]);
+      const [res1, res2] = await Promise.all([
+        fetch(`${ENV.API_URL}/crew?t=${t}`),
+        fetch(fetchUrl)
+      ]);
+      
       if (res1.ok) setCrews(await res1.json());
       if (res2.ok) setSchedules(await res2.json());
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error("Failed to load RailOps data", e);
+    }
   };
+  
   useEffect(() => { loadData(); }, [viewMode]);
 
   const handleAssign = async (crewId) => {
     if(!selectedScheduleId) return;
-    await fetch(`${API_URL}/schedules/${selectedScheduleId}/assign`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({crewId}) });
-    await loadData();
-    setSelectedScheduleId(null);
+    try {
+      await fetch(`${ENV.API_URL}/schedules/${selectedScheduleId}/assign`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({crewId})
+      });
+      await loadData();
+      setSelectedScheduleId(null);
+    } catch (e) {
+      console.error("Assign failed", e);
+    }
   };
+  
   const handleUnassign = async (scheduleId, crewId) => {
-    await fetch(`${API_URL}/schedules/${scheduleId}/unassign`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({crewId}) });
-    await loadData();
+    try {
+      await fetch(`${ENV.API_URL}/schedules/${scheduleId}/unassign`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({crewId})
+      });
+      await loadData();
+    } catch (e) {
+      console.error("Unassign failed", e);
+    }
   };
 
   const availableCrew = crews.filter(c => c.status === 'Available');
@@ -390,13 +425,13 @@ const RailOpsView = () => {
        {viewMode === 'live' && <div className="bg-slate-900 text-white p-5 rounded-xl mb-4 text-center"><h3 className="font-bold text-lg">Dispatch Board</h3><div className="text-xs mt-1 text-slate-400">Active Trains: {schedules.length}</div></div>}
        <div>
          <h4 className="font-bold text-sm mb-3">Schedule</h4>
-         <div className="space-y-3">{schedules.map(s => (
+         <div className="space-y-3">{schedules.length > 0 ? schedules.map(s => (
             <div key={s._id} className="bg-white p-4 rounded-xl border shadow-sm">
                <div className="flex justify-between mb-2"><div><span className="font-bold text-sm">{s.trainId}</span> <span className="text-xs bg-slate-100 px-1 rounded">{s.status}</span></div><span className="text-xs font-mono">{formatDate(s.departureTime)}</span></div>
                <div className="text-xs text-slate-500">{s.origin} &rarr; {s.destination}</div>
                <div className="mt-3 pt-3 border-t flex gap-2 flex-wrap">{s.assignedCrew?.map(c => <div key={c._id} className="flex items-center bg-slate-50 border px-2 py-1 rounded-full text-[10px] font-bold">{c.name} {viewMode!=='history' && <button onClick={()=>handleUnassign(s._id, c._id)} className="ml-2 text-slate-400 hover:text-red-500"><X className="w-3 h-3"/></button>}</div>)} {viewMode!=='history' && <button onClick={()=>setSelectedScheduleId(s._id)} className="text-[10px] text-indigo-600 font-bold border border-dashed px-2 py-1 rounded-full">+ Assign</button>}</div>
             </div>
-         ))}</div>
+         )) : <div className="text-center text-sm text-gray-500 py-4">No schedules found.</div>}</div>
        </div>
     </div>
   );
@@ -408,24 +443,46 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   const [jobs, setJobs] = useState([]);
   const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
 
-  useEffect(() => { if (mongoUser?.companyName) { fetch(`${API_URL}/jobs`).then(res => res.json()).then(data => { setJobs(data.filter(j => j.company === mongoUser.companyName)); }); } }, [mongoUser]);
+  useEffect(() => { 
+    if (mongoUser?.companyName) { 
+       fetch(`${ENV.API_URL}/jobs`)
+         .then(res => res.json())
+         .then(data => { 
+            setJobs(data.filter(j => j.company === mongoUser.companyName)); 
+         })
+         .catch(err => console.error("Error fetching company jobs", err));
+    } 
+  }, [mongoUser]);
 
   const handlePostJob = async () => {
     if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
-    await fetch(`${API_URL}/jobs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] }) });
-    refreshData(); 
-    const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
-    setJobs([newJob, ...jobs]);
+    
+    try {
+      await fetch(`${ENV.API_URL}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
+      });
+      refreshData();
+      
+      // Optimistic update
+      const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
+      setJobs([newJob, ...jobs]);
+      setForm({ title: '', location: '', salary: '', category: 'Field' });
+    } catch (e) {
+      console.error("Failed to post job", e);
+      alert("Failed to post job.");
+    }
   };
 
   return (
     <div className="pb-20 bg-slate-50 min-h-full">
-       <div className="h-24 bg-slate-900 relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg">{mongoUser?.companyName}</h2></div></div></div>
+       <div className="h-24 bg-slate-900 relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg">{mongoUser?.companyName || "Your Company"}</h2></div></div></div>
        <div className="mt-10 px-4 border-b flex space-x-6 text-sm font-medium text-slate-500 overflow-x-auto">{['Overview', 'RailOps', 'Jobs'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>))}</div>
        <div className="p-4">
          {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
-         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
+         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
        </div>
     </div>
   );
@@ -439,29 +496,104 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   useEffect(() => { 
     if (mongoUser) {
         setFormData({ role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }); 
-        if(mongoUser.email) fetch(`${API_URL}/my-assignments?email=${mongoUser.email}`).then(r=>r.json()).then(setMyAssignments);
+        if(mongoUser.email) {
+          fetch(`${ENV.API_URL}/my-assignments?email=${mongoUser.email}`)
+            .then(r => r.json())
+            .then(setMyAssignments)
+            .catch(err => console.error(err));
+        }
     }
   }, [mongoUser]);
 
-  const handleSave = async () => { await fetch(`${API_URL}/users/${user.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) }); setIsEditing(false); refreshProfile(); };
+  const handleSave = async () => { 
+      try {
+        await fetch(`${ENV.API_URL}/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        setIsEditing(false); 
+        refreshProfile(); 
+      } catch (e) {
+        console.error("Save profile failed", e);
+        alert("Failed to save profile.");
+      }
+  };
 
   return (
     <div className="pb-20 bg-slate-50 min-h-full">
        <div className="bg-white border-b pb-6 mb-4"><div className="h-24 bg-slate-900"></div><div className="px-4 -mt-10"><div className="flex justify-between"><img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white" />{!isEditing && <button onClick={() => setIsEditing(true)} className="mt-10 text-xs font-bold bg-slate-100 px-3 py-1 rounded">Edit</button>}</div><h2 className="text-xl font-bold mt-2">{user.fullName}</h2></div></div>
        <div className="px-4 space-y-4">
-          {isEditing && <div className="bg-white p-4 rounded shadow"><select className="w-full border p-2 mb-2 rounded" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}><option value="individual">Individual</option><option value="company">Company</option></select><input className="w-full border p-2 mb-2" placeholder="Title/Company" value={formData.role === 'company' ? formData.companyName : formData.jobTitle} onChange={e => setFormData({...formData, [formData.role === 'company' ? 'companyName' : 'jobTitle']: e.target.value})} /><button onClick={handleSave} className="w-full bg-indigo-600 text-white py-2 rounded">Save</button></div>}
-          <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments.</p>}</div>
+         {isEditing && <div className="bg-white p-4 rounded shadow"><select className="w-full border p-2 mb-2 rounded" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}><option value="individual">Individual</option><option value="company">Company</option></select><input className="w-full border p-2 mb-2" placeholder="Title/Company" value={formData.role === 'company' ? formData.companyName : formData.jobTitle} onChange={e => setFormData({...formData, [formData.role === 'company' ? 'companyName' : 'jobTitle']: e.target.value})} /><button onClick={handleSave} className="w-full bg-indigo-600 text-white py-2 rounded">Save</button></div>}
+         <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments found.</p>}</div>
        </div>
     </div>
   );
 };
 
+// --- VIEWS ---
+const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
+    <div className="pb-20 px-4 pt-6">
+        <SectionTitle title="Tools" subtitle="Calculators & Decoders" />
+        <div className="bg-white p-4 rounded-xl border shadow-sm mb-4">
+            <h3 className="font-bold text-sm mb-2 flex items-center"><Calculator className="w-4 h-4 mr-2"/> Curve Resistance</h3>
+            <CurveResistanceCalculator isPro={isPro} />
+        </div>
+        {!isPro && <button onClick={onUnlock} className="w-full bg-amber-100 text-amber-900 py-3 rounded-xl font-bold text-sm mb-4 flex items-center justify-center"><Lock className="w-4 h-4 mr-2"/> Unlock More Tools</button>}
+    </div>
+);
+
+const LibraryView = ({ data }) => (
+    <div className="pb-20 px-4 pt-6">
+        <SectionTitle title="Library" subtitle="Regulations & Manuals" />
+        <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white p-4 rounded-xl border flex flex-col items-center text-center">
+                <BookOpen className="w-8 h-8 text-indigo-500 mb-2"/>
+                <span className="text-xs font-bold">GCOR</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border flex flex-col items-center text-center">
+                <Shield className="w-8 h-8 text-indigo-500 mb-2"/>
+                <span className="text-xs font-bold">49 CFR</span>
+            </div>
+        </div>
+        <div className="mt-6">
+            <h3 className="font-bold text-sm mb-2">AI Assistant</h3>
+            <AIChat />
+        </div>
+    </div>
+);
+
 // --- STANDARD VIEWS ---
-const LoadingScreen = () => <div className="p-10 text-center text-slate-400">Loading...</div>;
-const ErrorScreen = ({ msg }) => <div className="p-10 text-center text-red-400">{msg}</div>;
 const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel</div>;
-const JobDetailView = ({ job, onBack }) => (<div className="pb-20 p-6"><button onClick={onBack}>Back</button><h2 className="text-xl font-bold mt-4">{job.title}</h2><p>{job.description}</p></div>);
-const HomeView = ({ changeTab, jobs, onJobClick }) => (<div className="pb-20"><div className="bg-slate-900 text-white p-6 rounded-b-xl mb-6"><h2 className="text-2xl font-bold">Railnology AI</h2><p className="text-sm text-slate-400">Compliance Intelligence.</p></div><div className="px-4"><SectionTitle title="Recent Jobs" /><div className="space-y-2">{jobs.slice(0,3).map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}</div></div></div>);
+const JobDetailView = ({ job, onBack }) => (
+    <div className="pb-20 p-6 bg-white min-h-screen">
+        <button onClick={onBack} className="mb-4 text-sm flex items-center text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
+        <JobLogo logo={job.logo} company={job.company} size="lg"/>
+        <h2 className="text-2xl font-bold mt-4">{job.title}</h2>
+        <div className="flex items-center text-slate-500 mt-2 text-sm">
+             <Building2 className="w-4 h-4 mr-1"/> {job.company}
+             <span className="mx-2">•</span>
+             <MapPin className="w-4 h-4 mr-1"/> {job.location}
+        </div>
+        <div className="mt-6 border-t pt-6">
+            <h3 className="font-bold mb-2">Description</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
+        </div>
+    </div>
+);
+const HomeView = ({ changeTab, jobs, onJobClick }) => (
+    <div className="pb-20">
+        <div className="bg-slate-900 text-white p-6 rounded-b-xl mb-6 shadow-lg">
+            <h2 className="text-2xl font-bold">Railnology AI</h2>
+            <p className="text-sm text-slate-400">Compliance Intelligence & Job Marketplace.</p>
+        </div>
+        <div className="px-4">
+            <SectionTitle title="Recent Jobs" />
+            <div className="space-y-2">{jobs.slice(0,3).map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}</div>
+            <button onClick={() => changeTab('jobs')} className="w-full mt-4 py-3 text-xs font-bold text-slate-500 border rounded-xl hover:bg-slate-50">View All Jobs</button>
+        </div>
+    </div>
+);
 const JobsView = ({ jobs, onJobClick }) => (<div className="pb-20 px-4 pt-6"><SectionTitle title="Jobs" /><div className="space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}</div></div>);
 
 // --- MAIN CONTENT ---
@@ -469,8 +601,7 @@ const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [selectedJob, setSelectedJob] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [data, setData] = useState({ jobs: [], glossary: [] });
+  const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
   const [isPro, setIsPro] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [mongoUser, setMongoUser] = useState(null);
@@ -480,14 +611,15 @@ const MainContent = () => {
     setLoading(true);
     try {
       const [j, g, si] = await Promise.all([
-        fetch(`${API_URL}/jobs`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/glossary`).then(r => r.ok ? r.json() : []),
-        fetch(`${API_URL}/signals`).then(r => r.ok ? r.json() : [])
+        fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
+        fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
       ]);
       setData({ jobs: j, glossary: g, signals: si });
     } catch (e) { 
-      console.error(e); 
-      setError("Data Load Error"); 
+      console.error("API Fetch Error:", e);
+      // In production, you might want to show a toast or error state here
+      // For now, we leave the data empty rather than falling back to mock
       setData({ jobs: [], glossary: [], signals: [] });
     } finally { setLoading(false); }
   };
@@ -496,8 +628,18 @@ const MainContent = () => {
   
   useEffect(() => {
     if (isSignedIn && user) {
-      fetch(`${API_URL}/users/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clerkId: user.id, email: user.primaryEmailAddress.emailAddress, fullName: user.fullName }) })
-      .then(res => res.json()).then(setMongoUser).catch(console.error);
+        fetch(`${ENV.API_URL}/users/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            clerkId: user.id, 
+            email: user.primaryEmailAddress.emailAddress, 
+            fullName: user.fullName 
+          })
+        })
+        .then(res => res.json())
+        .then(setMongoUser)
+        .catch(err => console.error("User sync failed:", err));
     }
   }, [isSignedIn, user]);
 
@@ -505,7 +647,7 @@ const MainContent = () => {
     if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
   }, []);
 
-  const ADMIN = "wayne@railnology.com";
+  const ADMIN = ENV.ADMIN_EMAIL;
   if (selectedJob) return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
 
   return (
@@ -522,11 +664,16 @@ const MainContent = () => {
           {activeTab === 'tools' && <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />}
           {activeTab === 'learn' && <LibraryView data={data} />}
         </div>
-        <div className="bg-white border-t border-slate-200 px-4 pb-safe sticky bottom-0 z-50"><div className="flex justify-between items-center h-16"><TabButton active={activeTab} id="home" icon={Train} label="Home" onClick={setActiveTab} /><TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} /><TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />{mongoUser?.role === 'company' && <TabButton active={activeTab} id="company" icon={LayoutDashboard} label="Dash" onClick={setActiveTab} />}</div></div>
+        <div className="bg-white border-t border-slate-200 px-4 pb-safe sticky bottom-0 z-50"><div className="flex justify-between items-center h-16"><TabButton active={activeTab} id="home" icon={Train} label="Home" onClick={setActiveTab} /><TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} /><TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} /><TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />{mongoUser?.role === 'company' && <TabButton active={activeTab} id="company" icon={LayoutDashboard} label="Dash" onClick={setActiveTab} />}</div></div>
       </div>
     </div>
   );
 };
 
-const App = () => (<ClerkProvider publishableKey={CLERK_KEY}><MainContent /></ClerkProvider>);
+const App = () => (
+  // Ensure CLERK_KEY is valid. If it's missing, ClerkProvider will throw an error in dev console.
+  <ClerkProvider publishableKey={ENV.CLERK_KEY}>
+    <MainContent />
+  </ClerkProvider>
+);
 export default App;
