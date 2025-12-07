@@ -7,7 +7,7 @@ import {
   Video, CreditCard, Unlock, FileText, Scale, ScrollText, Shield, UserCircle, 
   Building2, LayoutDashboard, Edit3, MapPin, Plus, Trash2, ExternalLink, 
   ArrowLeft, BarChart3, Calendar, Users, AlertCircle, History, Clock, Bot, Send,
-  Play, Radio, Info, Smartphone, Monitor
+  Play, Radio, Info, Smartphone, Monitor, ClipboardCheck, FileBarChart, CheckSquare
 } from 'lucide-react';
 
 // ==========================================
@@ -203,6 +203,351 @@ const JobCard = ({ job, onClick }) => (
   </div>
 );
 
+// --- INSPECTION FORM COMPONENT ---
+const TrackInspectionForm = ({ onClose }) => {
+    const [defects, setDefects] = useState([]);
+    const [currentDefect, setCurrentDefect] = useState({ type: '', mp: '', track: 'Main 1' });
+    const [metadata, setMetadata] = useState({ subdivision: '', inspector: '' });
+
+    const addDefect = () => {
+        if (!currentDefect.type || !currentDefect.mp) return;
+        setDefects([...defects, { ...currentDefect, id: Date.now() }]);
+        setCurrentDefect({ type: '', mp: '', track: 'Main 1' });
+    };
+
+    const handleSave = () => {
+        alert("Report Saved! (Simulated)");
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-50 z-[60] flex flex-col animate-in slide-in-from-bottom duration-300">
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-4 pt-12 shadow-md flex justify-between items-center flex-shrink-0">
+                <button onClick={onClose} className="text-slate-300 hover:text-white">Cancel</button>
+                <h2 className="font-bold">New Inspection (213)</h2>
+                <button onClick={handleSave} className="text-emerald-400 font-bold">Save</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {/* Meta Data */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">Trip Details</h3>
+                    <div className="space-y-3">
+                        <input 
+                            placeholder="Subdivision (e.g. Miami Sub)" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:border-indigo-500 focus:outline-none"
+                            value={metadata.subdivision}
+                            onChange={e => setMetadata({...metadata, subdivision: e.target.value})}
+                        />
+                        <input 
+                            placeholder="Inspector Name" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:border-indigo-500 focus:outline-none"
+                            value={metadata.inspector}
+                            onChange={e => setMetadata({...metadata, inspector: e.target.value})}
+                        />
+                    </div>
+                </div>
+
+                {/* New Defect Entry */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase">Log Defect</h3>
+                        <button className="text-[10px] flex items-center text-indigo-600 font-bold bg-indigo-50 px-2 py-1 rounded-full">
+                            <Bot className="w-3 h-3 mr-1" /> Check Rule
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <input 
+                            placeholder="MP (e.g. 104.5)" 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm"
+                            value={currentDefect.mp}
+                            onChange={e => setCurrentDefect({...currentDefect, mp: e.target.value})}
+                        />
+                        <select 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm"
+                            value={currentDefect.track}
+                            onChange={e => setCurrentDefect({...currentDefect, track: e.target.value})}
+                        >
+                            <option>Main 1</option>
+                            <option>Main 2</option>
+                            <option>Siding</option>
+                            <option>Yard</option>
+                        </select>
+                    </div>
+                    <select 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm mb-4"
+                        value={currentDefect.type}
+                        onChange={e => setCurrentDefect({...currentDefect, type: e.target.value})}
+                    >
+                        <option value="">Select Defect Type...</option>
+                        <option value="Broken Bolt">Broken Bolt (Joint)</option>
+                        <option value="Loose Bolt">Loose Bolt</option>
+                        <option value="Pull Apart">Pull Apart</option>
+                        <option value="Broken Rail">Broken Rail (Detail Fracture)</option>
+                        <option value="Wide Gauge">Wide Gauge</option>
+                        <option value="Profile">Profile / Surface</option>
+                        <option value="Tie Defect">Defective Tie</option>
+                    </select>
+                    <button 
+                        onClick={addDefect}
+                        disabled={!currentDefect.type || !currentDefect.mp}
+                        className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm disabled:opacity-50"
+                    >
+                        Add to Report
+                    </button>
+                </div>
+
+                {/* Defect List */}
+                {defects.length > 0 && (
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 pl-1">Logged Items ({defects.length})</h3>
+                        <div className="space-y-2">
+                            {defects.map((d, i) => (
+                                <div key={d.id} className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-center animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="flex items-center">
+                                        <div className="bg-rose-100 text-rose-600 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs mr-3">{i+1}</div>
+                                        <div>
+                                            <div className="text-sm font-bold text-slate-800">{d.type}</div>
+                                            <div className="text-[10px] text-slate-500">MP {d.mp} • {d.track}</div>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setDefects(defects.filter(x => x.id !== d.id))} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- RAILOPS (OPERATIONS DASHBOARD) ---
+const RailOpsView = () => {
+    const [subTab, setSubTab] = useState('dispatch');
+    const [schedules, setSchedules] = useState([]);
+    const [crews, setCrews] = useState([]);
+    const [selectedSchedule, setSelectedSchedule] = useState(null);
+    const [showInspection, setShowInspection] = useState(false);
+
+    // Initial Data Fetch
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [schedRes, crewRes] = await Promise.all([
+                    fetch(`${ENV.API_URL}/schedules`).then(r => r.json()),
+                    fetch(`${ENV.API_URL}/crew`).then(r => r.json())
+                ]);
+                setSchedules(schedRes);
+                setCrews(crewRes);
+            } catch (e) {
+                console.error("RailOps Load Error", e);
+            }
+        };
+        loadData();
+    }, []);
+
+    const assignCrew = async (crewId) => {
+        if (!selectedSchedule) return;
+        try {
+            await fetch(`${ENV.API_URL}/schedules/${selectedSchedule._id}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ crewId })
+            });
+            // Optimistic update
+            const crewMember = crews.find(c => c._id === crewId);
+            setSchedules(prev => prev.map(s => 
+                s._id === selectedSchedule._id 
+                ? { ...s, assignedCrew: [...(s.assignedCrew || []), crewMember] } 
+                : s
+            ));
+            setSelectedSchedule(null);
+        } catch (e) { console.error(e); }
+    };
+
+    return (
+        <div className="pb-24 pt-4 h-full flex flex-col relative">
+            {/* INSPECTION FORM OVERLAY */}
+            {showInspection && <TrackInspectionForm onClose={() => setShowInspection(false)} />}
+
+            {/* SUB-NAVIGATION */}
+            <div className="px-4 mb-4 flex-shrink-0">
+                <div className="bg-slate-100 p-1 rounded-xl flex">
+                    {['Dispatch', 'Inspections', 'Reports'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setSubTab(tab.toLowerCase())}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                subTab === tab.toLowerCase() 
+                                ? 'bg-white text-slate-900 shadow-sm' 
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="flex-1 overflow-y-auto px-4 scrollbar-thin">
+                {/* 1. DISPATCH TAB */}
+                {subTab === 'dispatch' && (
+                    <div className="space-y-4">
+                        <div className="bg-slate-900 rounded-xl p-5 text-white shadow-lg">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold">Active Board</h3>
+                                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-1 rounded-full border border-emerald-500/30">Live</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-center">
+                                <div className="bg-white/10 p-3 rounded-lg">
+                                    <div className="text-2xl font-bold">{schedules.length}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Active Trains</div>
+                                </div>
+                                <div className="bg-white/10 p-3 rounded-lg">
+                                    <div className="text-2xl font-bold">{crews.filter(c => c.status === 'Available').length}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Crew Ready</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <SectionTitle title="Train Schedules" />
+                        
+                        {schedules.map(schedule => (
+                            <div key={schedule._id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex items-center">
+                                        <div className="bg-indigo-50 p-2 rounded-lg mr-3">
+                                            <Train className="w-5 h-5 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800">{schedule.trainId}</h4>
+                                            <p className="text-xs text-slate-500">{schedule.origin} <span className="mx-1">→</span> {schedule.destination}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-600">
+                                        {new Date(schedule.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </span>
+                                </div>
+
+                                <div className="border-t border-slate-50 pt-3 flex flex-wrap gap-2 items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Crew:</span>
+                                    {schedule.assignedCrew && schedule.assignedCrew.length > 0 ? (
+                                        schedule.assignedCrew.map((c, i) => (
+                                            <div key={i} className="flex items-center bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full text-[10px] font-bold border border-indigo-100">
+                                                <UserCircle className="w-3 h-3 mr-1" />
+                                                {c.name}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <span className="text-[10px] text-red-400 italic">Unassigned</span>
+                                    )}
+                                    <button 
+                                        onClick={() => setSelectedSchedule(schedule)}
+                                        className="ml-auto text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-full font-bold hover:bg-slate-700 transition"
+                                    >
+                                        + Assign
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 2. INSPECTIONS TAB (COMPLIANCE) */}
+                {subTab === 'inspections' && (
+                    <div className="space-y-4">
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 text-center shadow-sm">
+                            <ClipboardCheck className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                            <h3 className="font-bold text-slate-800">Electronic Inspection</h3>
+                            <p className="text-xs text-slate-500 mb-4 max-w-[200px] mx-auto">Start a new 213 Track Inspection or 236 Signal Test.</p>
+                            <button 
+                                onClick={() => setShowInspection(true)}
+                                className="bg-emerald-600 text-white w-full py-3 rounded-xl font-bold shadow-md hover:bg-emerald-700 transition active:scale-95"
+                            >
+                                Start New Form (213)
+                            </button>
+                        </div>
+
+                        <SectionTitle title="Recent Logs" />
+                        {[1,2].map(i => (
+                            <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center">
+                                <div>
+                                    <div className="flex items-center mb-1">
+                                        <AlertTriangle className="w-3 h-3 text-amber-500 mr-1.5" />
+                                        <span className="text-xs font-bold text-slate-700">Broken Bolt (Joint)</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400">Milepost 104.5 • Main 1</p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] font-bold text-slate-500">Ref: 49 CFR</div>
+                                    <div className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">§ 213.121</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 3. REPORTS TAB */}
+                {subTab === 'reports' && (
+                    <div className="space-y-4">
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition cursor-pointer">
+                                <FileText className="w-8 h-8 text-slate-400 mb-3" />
+                                <h4 className="font-bold text-sm text-slate-800">Daily Ops</h4>
+                                <p className="text-[10px] text-slate-500">Crew hours & delays</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition cursor-pointer">
+                                <FileBarChart className="w-8 h-8 text-slate-400 mb-3" />
+                                <h4 className="font-bold text-sm text-slate-800">FRA Monthly</h4>
+                                <p className="text-[10px] text-slate-500">Defect summary</p>
+                            </div>
+                         </div>
+                    </div>
+                )}
+            </div>
+
+            {/* CREW SELECTION MODAL */}
+            {selectedSchedule && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-10">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-lg">Assign Crew</h3>
+                            <button onClick={() => setSelectedSchedule(null)}><X className="w-5 h-5 text-slate-400"/></button>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-4">Select crew for Train <strong>{selectedSchedule.trainId}</strong></p>
+                        
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            {crews.filter(c => c.status === 'Available').map(crew => (
+                                <button 
+                                    key={crew._id}
+                                    onClick={() => assignCrew(crew._id)}
+                                    className="w-full flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition"
+                                >
+                                    <div className="flex items-center">
+                                        <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold text-xs mr-3">
+                                            {crew.name.charAt(0)}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-sm font-bold text-slate-800">{crew.name}</div>
+                                            <div className="text-[10px] text-emerald-600 flex items-center">
+                                                <Clock className="w-3 h-3 mr-1" /> 12h Remaining
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Plus className="w-4 h-4 text-slate-400" />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // --- TOOLS COMPONENTS ---
 const CurveResistanceCalculator = ({ isPro }) => {
   const [weight, setWeight] = useState(5000);
@@ -339,7 +684,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT ---
+// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -349,7 +694,12 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const scrollRef = useRef(null);
   const { user } = useUser();
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
     if (contextFilter) {
@@ -806,6 +1156,13 @@ const MainContent = () => {
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
              </div>
+          )}
+          
+          {/* RailOps View */}
+          {activeTab === 'company' && mongoUser?.role === 'company' && (
+            <div className="flex-1 overflow-y-auto scrollbar-thin">
+              <RailOpsView />
+            </div>
           )}
         </div>
 
