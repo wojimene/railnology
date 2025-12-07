@@ -87,16 +87,6 @@ const getCompensation = (job) => {
   return "DOE";
 };
 
-// --- DEVICE ID UTILITY ---
-const getDeviceId = () => {
-    let id = localStorage.getItem('railnology_device_id');
-    if (!id) {
-        id = 'dev_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('railnology_device_id', id);
-    }
-    return id;
-};
-
 // ==========================================
 // 4. SUB-COMPONENTS
 // ==========================================
@@ -339,7 +329,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT ---
+// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -559,7 +549,7 @@ const LibraryView = ({ onPaywall, onConflict }) => {
     );
 };
 
-// --- COMPANY & PROFILE VIEWS (RESTORED) ---
+// --- RESTORED VIEWS ---
 const CompanyView = ({ user, mongoUser, refreshData }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [jobs, setJobs] = useState([]);
@@ -578,7 +568,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
 
   const handlePostJob = async () => {
     if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
-    
     try {
       await fetch(`${ENV.API_URL}/jobs`, {
         method: 'POST',
@@ -586,7 +575,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
         body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
       });
       refreshData();
-      
       const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
       setJobs([newJob, ...jobs]);
       setForm({ title: '', location: '', salary: '', category: 'Field' });
@@ -653,7 +641,6 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
 };
 
 const RailOpsView = () => {
-    // Basic placeholder for RailOps functionality to prevent ReferenceError
     return <div className="p-4 text-center text-sm text-slate-500">RailOps Scheduling Dashboard</div>;
 };
 
@@ -725,14 +712,21 @@ const MainContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
-      <style>{`.scrollbar-thin::-webkit-scrollbar { width: 3px; } .scrollbar-thin::-webkit-scrollbar-track { background: transparent; } .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
-      
+      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
+      <style>{`
+        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}</style>
+
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
+      {/* Mobile Constraint Container */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
         
+        {/* Main View Area - Handles Scrolling Logic */}
         <div className={`flex-1 overflow-hidden relative flex flex-col`}>
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-hide">
@@ -746,11 +740,13 @@ const MainContent = () => {
              </div>
           )}
           
+          {/* Library View passes error handlers to Chat */}
           {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
           
+          {/* RESTORED TOOLS VIEW */}
           {activeTab === 'tools' && (
              <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
@@ -758,6 +754,7 @@ const MainContent = () => {
           )}
         </div>
 
+        {/* Bottom Navigation */}
         <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
             <div className="flex justify-between items-center h-20">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
