@@ -10,54 +10,19 @@ import {
   Play, Radio, Info, Smartphone, Monitor
 } from 'lucide-react';
 
-// ==========================================
-// 1. AUTHENTICATION (PRODUCTION SWITCH)
-// ==========================================
-
-/* [PRODUCTION INSTRUCTION]: 
-   When deploying to Render/Vercel:
-   1. UNCOMMENT the import below.
-   2. DELETE the "PREVIEW SHIM" block entirely.
-*/
-
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-/* --- START: PREVIEW SHIM (Keep this for Preview, Delete for Production) --- */
-const ClerkProvider = ({ children }) => <>{children}</>;
-const SignedIn = ({ children }) => <>{children}</>;
-const SignedOut = ({ children }) => null;
-const SignInButton = () => <button>Sign In</button>;
-const UserButton = () => <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">US</div>;
-const useUser = () => ({ 
-  isSignedIn: true, 
-  user: { 
-    id: "user_123", 
-    fullName: "Rail Pro", 
-    primaryEmailAddress: { emailAddress: "demo@railnology.com" } 
-  } 
-});
-
-// Safe Environment Variable Access for Preview
-const getEnv = (key, fallback) => {
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return import.meta.env[key] || fallback;
-    }
-  } catch (e) {}
-  return fallback;
-};
-/* --- END: PREVIEW SHIM --- */
-
+// ✅ PRODUCTION: Real Authentication Import
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // ==========================================
-// 2. CONFIGURATION & ENVIRONMENT
+// 1. CONFIGURATION & ENVIRONMENT
 // ==========================================
 
 const ENV = {
-  API_URL: getEnv('VITE_API_URL', 'https://api.railnology.com'),
-  CLERK_KEY: getEnv('VITE_CLERK_KEY', 'pk_test_placeholder'), 
-  STRIPE_LINK: getEnv('VITE_STRIPE_PAYMENT_LINK', '#'),
-  ADMIN_EMAIL: getEnv('VITE_ADMIN_EMAIL', 'wayne@railnology.com')
+  // Standard Vite Production Environment Access
+  API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
+  CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
+  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
+  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
 };
 
 const BRAND = {
@@ -78,7 +43,7 @@ const getDeviceId = () => {
 };
 
 // ==========================================
-// 3. HELPER FUNCTIONS
+// 2. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
@@ -98,7 +63,7 @@ const getCompensation = (job) => {
 };
 
 // ==========================================
-// 4. SUB-COMPONENTS
+// 3. SUB-COMPONENTS
 // ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
@@ -203,7 +168,7 @@ const JobCard = ({ job, onClick }) => (
   </div>
 );
 
-// --- TOOLS COMPONENTS (RESTORED) ---
+// --- TOOLS COMPONENTS ---
 const CurveResistanceCalculator = ({ isPro }) => {
   const [weight, setWeight] = useState(5000);
   const [degree, setDegree] = useState(2);
@@ -299,7 +264,47 @@ const SafetyMinuteCard = () => (
   </div>
 );
 
-// --- AI CHAT COMPONENT ---
+// --- MODALS ---
+const PaywallModal = ({ onClose }) => (
+  <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+      <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+      <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
+        <Lock className="w-6 h-6 text-amber-600" />
+      </div>
+      <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Usage Limit Reached</h3>
+      <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
+        You've used your 10 free daily searches. Upgrade to Pro for unlimited Railly AI access.
+      </p>
+      <div className="space-y-3">
+        <a href={ENV.STRIPE_LINK} target="_blank" className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center">
+          <CreditCard className="w-4 h-4 mr-2" /> Upgrade to Pro
+        </a>
+        <button onClick={onClose} className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600">Maybe Later</button>
+      </div>
+    </div>
+  </div>
+);
+
+const DeviceConflictModal = ({ onClaim }) => (
+  <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative border-t-4 border-rose-500">
+      <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
+        <Monitor className="w-6 h-6 text-rose-600" />
+      </div>
+      <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Active Elsewhere</h3>
+      <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
+        You are currently active on another device. Railnology allows one active session at a time.
+      </p>
+      <button onClick={onClaim} className="w-full bg-rose-600 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-rose-700 transition flex items-center justify-center mb-3">
+        <Smartphone className="w-4 h-4 mr-2" /> Continue on This Device
+      </button>
+      <p className="text-[10px] text-center text-slate-400">This will log you out of the other session.</p>
+    </div>
+  </div>
+);
+
+// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -309,7 +314,12 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const scrollRef = useRef(null);
   const { user } = useUser();
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
     if (contextFilter) {
@@ -390,248 +400,3 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                 <h3 className="text-sm font-bold text-slate-800">Railly AI</h3>
                 <p className="text-[10px] text-slate-500">{contextFilter ? 'Focused Search' : 'Full Compliance Mode'}</p>
             </div>
-          </div>
-       </div>
-
-       {/* Chat Area - Full Width */}
-       <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
-         {messages.map((m, i) => (
-           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
-              <div className={`text-sm leading-relaxed ${
-                  m.role === 'user' 
-                  ? 'max-w-[85%] p-3.5 rounded-2xl bg-slate-900 text-white rounded-br-none shadow-sm' 
-                  : 'w-full text-slate-800 pl-1' 
-              }`}>
-                 <p className="whitespace-pre-wrap">{m.text}</p>
-              </div>
-              
-              {m.sources && m.sources.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
-                  {m.sources.map((source, idx) => {
-                    const isRegulation = source.source_type === "Regulation" || (source.part > 0);
-                    return (
-                      <a 
-                        key={idx}
-                        href={isRegulation ? `https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}` : '#'}
-                        target={isRegulation ? "_blank" : undefined}
-                        rel="noreferrer"
-                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${
-                            isRegulation 
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                            : "bg-blue-50 text-blue-700 border-blue-200"
-                        }`}
-                      >
-                        {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
-                        {isRegulation ? `§ ${source.part}.${source.section}` : source.title || "Industry Info"}
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-           </div>
-         ))}
-         {loading && (
-           <div className="flex items-center text-xs text-slate-400 mt-2 pl-1 animate-pulse">
-             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce"></div>
-             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce delay-75"></div>
-             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
-           </div>
-         )}
-         <div ref={scrollRef} className="h-1" />
-       </div>
-
-       <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
-         <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
-            <input 
-              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
-              placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Railly..."}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            />
-            <button 
-                onClick={handleSend} 
-                disabled={loading} 
-                className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-90"
-            >
-                <ArrowRight className="w-4 h-4" />
-            </button>
-         </div>
-       </div>
-    </div>
-  );
-};
-
-// --- LIBRARY VIEW ---
-const LibraryView = ({ onPaywall, onConflict }) => {
-    const [selectedContext, setSelectedContext] = useState(null);
-
-    const manuals = [
-        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', part: 213 },
-        { id: '236', name: 'Signals', icon: Zap, color: 'bg-amber-500', part: 236 },
-        { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', part: 229 },
-        { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-indigo-500', part: 217 },
-        { id: '214', name: 'Workplace', icon: Shield, color: 'bg-rose-500', part: 214 },
-        { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-purple-500', part: 219 },
-    ];
-
-    return (
-        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-            {/* 1. TOP SECTION: MANUALS GRID (SCROLLABLE) */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 bg-white border-b border-slate-100 scrollbar-thin">
-                <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                    <button 
-                        onClick={() => setSelectedContext(null)}
-                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
-                    >
-                        <div className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center shadow-md mb-1 border border-slate-700 active:scale-95 transition-transform">
-                            <Globe className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
-                    </button>
-                    {manuals.map(m => (
-                        <button 
-                            key={m.id}
-                            onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
-                            className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
-                        >
-                            <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
-                                <m.icon className="w-6 h-6" />
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* 2. BOTTOM SECTION: RAILLY (FIXED HEIGHT 55%) */}
-            <div className="h-[55%] flex-shrink-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
-                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} />
-            </div>
-        </div>
-    );
-};
-
-// --- MAIN CONTENT ---
-const MainContent = () => {
-  const [activeTab, setActiveTab] = useState('home');
-  const [selectedJob, setSelectedJob] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
-  const [isPro, setIsPro] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [showConflict, setShowConflict] = useState(false); 
-  const [mongoUser, setMongoUser] = useState(null);
-  const { user, isSignedIn } = useUser();
-
-  const handleClaimDevice = async () => {
-      const deviceId = getDeviceId();
-      await fetch(`${ENV.API_URL}/users/claim-device`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id, deviceId })
-      });
-      setShowConflict(false);
-      alert("Device claimed. Please retry your search.");
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [j, g, si] = await Promise.all([
-        fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
-        fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
-        fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
-      ]);
-      setData({ jobs: j, glossary: g, signals: si });
-    } catch (e) { 
-      console.error("API Fetch Error:", e);
-      setData({ jobs: [], glossary: [], signals: [] });
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-  
-  useEffect(() => {
-    if (isSignedIn && user) {
-        const deviceId = getDeviceId();
-        fetch(`${ENV.API_URL}/users/sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            clerkId: user.id, 
-            email: user.primaryEmailAddress.emailAddress, 
-            fullName: user.fullName,
-            deviceId 
-          })
-        })
-        .then(res => res.json())
-        .then(setMongoUser)
-        .catch(err => console.error("User sync failed:", err));
-    }
-  }, [isSignedIn, user]);
-
-  useEffect(() => {
-    if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
-  }, []);
-
-  const ADMIN = ENV.ADMIN_EMAIL;
-  if (selectedJob) return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
-      <style>{`.scrollbar-thin::-webkit-scrollbar { width: 3px; } .scrollbar-thin::-webkit-scrollbar-track { background: transparent; } .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
-      
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
-      {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
-      
-      <div className="w-full max-w-[480px] h-[100dvh] bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
-        <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
-        
-        <div className={`flex-1 overflow-hidden relative flex flex-col`}>
-          {activeTab === 'home' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
-                {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
-                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />
-             </div>
-          )}
-          {activeTab === 'jobs' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />
-             </div>
-          )}
-          
-          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
-          
-          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
-          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
-          
-          {/* RESTORED TOOLS VIEW */}
-          {activeTab === 'tools' && (
-             <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
-             </div>
-          )}
-        </div>
-
-        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
-            <div className="flex justify-between items-center h-20">
-                <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
-                <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
-                <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
-                <TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />
-                {mongoUser?.role === 'company' && <TabButton active={activeTab} id="company" icon={Building2} label="Dash" onClick={setActiveTab} />}
-            </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const App = () => (
-  <ClerkProvider publishableKey={ENV.CLERK_KEY}>
-    <MainContent />
-  </ClerkProvider>
-);
-export default App;
