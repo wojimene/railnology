@@ -67,6 +67,16 @@ const BRAND = {
   accent: "text-amber-500" 
 };
 
+// --- DEVICE ID UTILITY ---
+const getDeviceId = () => {
+    let id = localStorage.getItem('railnology_device_id');
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('railnology_device_id', id);
+    }
+    return id;
+};
+
 // ==========================================
 // 3. HELPER FUNCTIONS
 // ==========================================
@@ -193,6 +203,79 @@ const JobCard = ({ job, onClick }) => (
   </div>
 );
 
+// --- TOOLS COMPONENTS (RESTORED) ---
+const CurveResistanceCalculator = ({ isPro }) => {
+  const [weight, setWeight] = useState(5000);
+  const [degree, setDegree] = useState(2);
+  const [resistance, setResistance] = useState(0);
+
+  useEffect(() => {
+    const r = 0.8 * weight * degree;
+    setResistance(r);
+  }, [weight, degree]);
+
+  return (
+    <div className="space-y-5">
+        <div className="flex gap-4">
+          <div className="w-full">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Train Weight (Tons)</label>
+            <input 
+              type="range" min="1000" max="20000" step="100" 
+              value={weight} 
+              onChange={(e) => setWeight(Number(e.target.value))}
+              className="w-full accent-indigo-600"
+              disabled={!isPro}
+            />
+            <div className="text-right text-xs font-bold text-slate-700">{weight.toLocaleString()} tons</div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Curve Degree</label>
+          <input 
+            type="range" min="0" max="15" step="0.5" 
+            value={degree} 
+            onChange={(e) => setDegree(Number(e.target.value))}
+            className="w-full accent-indigo-600"
+            disabled={!isPro}
+          />
+          <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
+        </div>
+
+        {/* Visualization */}
+        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden">
+           <div className="flex justify-between items-end mb-1">
+             <span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span>
+             <span className="text-xl font-extrabold text-indigo-600">{resistance.toLocaleString()} <span className="text-sm text-slate-400">lbs</span></span>
+           </div>
+           <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
+                style={{ width: `${Math.min((resistance / 240000) * 100, 100)}%` }} 
+              ></div>
+           </div>
+        </div>
+    </div>
+  );
+};
+
+const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
+    <div className="pb-24 px-4 pt-6">
+        <SectionTitle title="Tools" subtitle="Calculators & Decoders" />
+        <div className="bg-white p-4 rounded-xl border shadow-sm mb-4">
+            <h3 className="font-bold text-sm mb-4 flex items-center text-slate-800">
+                <Calculator className="w-4 h-4 mr-2 text-indigo-600"/> Curve Resistance
+            </h3>
+            <CurveResistanceCalculator isPro={isPro} />
+        </div>
+        {!isPro && (
+            <button onClick={onUnlock} className="w-full bg-amber-50 text-amber-900 border border-amber-200 py-3 rounded-xl font-bold text-sm mb-4 flex items-center justify-center hover:bg-amber-100 transition">
+                <Lock className="w-4 h-4 mr-2"/> Unlock More Tools
+            </button>
+        )}
+    </div>
+);
+
 // --- DAILY CONCEPT CARD ---
 const SafetyMinuteCard = () => (
   <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-5 text-white shadow-lg mb-6 relative overflow-hidden group">
@@ -216,7 +299,7 @@ const SafetyMinuteCard = () => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
+// --- AI CHAT COMPONENT ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -226,12 +309,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const scrollRef = useRef(null);
   const { user } = useUser();
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   useEffect(() => {
     if (contextFilter) {
@@ -247,12 +325,10 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     setLoading(true);
 
     try {
-      // Mock ID for preview environment if getDeviceId is missing, or implement it
-      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'preview_dev') : 'preview_dev';
-      
+      const deviceId = getDeviceId();
       const payload = { 
           query: userMsg, 
-          userId: user?.id, // Send Clerk ID (if logged in)
+          userId: user?.id, 
           deviceId: deviceId 
       };
       if (contextFilter) payload.filterPart = contextFilter.part;
@@ -263,19 +339,16 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
         body: JSON.stringify(payload)
       });
       
-      // ERROR HANDLING (PAYWALL & CONFLICT)
       if (res.status === 402) {
-          if (onPaywall) onPaywall(); // Limit Reached
+          if (onPaywall) onPaywall();
           setMessages(prev => [...prev, { role: 'ai', text: "🔒 Daily limit reached. Please upgrade to continue." }]);
           return;
       }
-      
       if (res.status === 409) {
-          if (onConflict) onConflict(); // Device Conflict
+          if (onConflict) onConflict();
           setMessages(prev => [...prev, { role: 'ai', text: "⚠️ Session paused due to activity on another device." }]);
           return;
       }
-
       if (!res.ok) throw new Error('API Error');
       
       const data = await res.json();
@@ -320,7 +393,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
           </div>
        </div>
 
-       {/* Chat Area - FULL WIDTH, NO FRAME FOR AI */}
+       {/* Chat Area - Full Width */}
        <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
          {messages.map((m, i) => (
            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
@@ -332,13 +405,10 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                  <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
-              {/* SOURCE PILLS (UPDATED LOGIC) */}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
                   {m.sources.map((source, idx) => {
-                    // Logic: Regulation if part > 0, otherwise Industry Info
                     const isRegulation = source.source_type === "Regulation" || (source.part > 0);
-                    
                     return (
                       <a 
                         key={idx}
@@ -352,10 +422,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                         }`}
                       >
                         {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
-                        {isRegulation 
-                            ? `§ ${source.part}.${source.section}` 
-                            : source.title || "Industry Info"
-                        }
+                        {isRegulation ? `§ ${source.part}.${source.section}` : source.title || "Industry Info"}
                       </a>
                     );
                   })}
@@ -395,7 +462,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   );
 };
 
-// --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
+// --- LIBRARY VIEW ---
 const LibraryView = ({ onPaywall, onConflict }) => {
     const [selectedContext, setSelectedContext] = useState(null);
 
@@ -410,11 +477,10 @@ const LibraryView = ({ onPaywall, onConflict }) => {
 
     return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-            {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
-            <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
+            {/* 1. TOP SECTION: MANUALS GRID (SCROLLABLE) */}
+            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 bg-white border-b border-slate-100 scrollbar-thin">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                <div className="grid grid-cols-3 gap-4 mb-2">
-                    {/* "All" Button */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
                     <button 
                         onClick={() => setSelectedContext(null)}
                         className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
@@ -424,15 +490,11 @@ const LibraryView = ({ onPaywall, onConflict }) => {
                         </div>
                         <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
-
-                    {/* Display ALL manuals */}
                     {manuals.map(m => (
                         <button 
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
-                            className={`flex flex-col items-center transition-all ${
-                                selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'
-                            }`}
+                            className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
                         >
                             <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
                                 <m.icon className="w-6 h-6" />
@@ -443,67 +505,13 @@ const LibraryView = ({ onPaywall, onConflict }) => {
                 </div>
             </div>
 
-            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
-            <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
-                <AIChat 
-                    contextFilter={selectedContext} 
-                    className="h-full" 
-                    onPaywall={onPaywall} 
-                    onConflict={onConflict}
-                />
+            {/* 2. BOTTOM SECTION: RAILLY (FIXED HEIGHT 55%) */}
+            <div className="h-[55%] flex-shrink-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
+                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} />
             </div>
         </div>
     );
 };
-
-// --- STANDARD VIEWS ---
-const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel</div>;
-const JobDetailView = ({ job, onBack }) => (
-    <div className="pb-20 p-6 bg-white min-h-screen">
-        <button onClick={onBack} className="mb-4 text-sm flex items-center text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
-        <JobLogo logo={job.logo} company={job.company} size="lg"/>
-        <h2 className="text-2xl font-bold mt-4">{job.title}</h2>
-        <div className="flex items-center text-slate-500 mt-2 text-sm">
-             <Building2 className="w-4 h-4 mr-1"/> {job.company}
-             <span className="mx-2">•</span>
-             <MapPin className="w-4 h-4 mr-1"/> {job.location}
-        </div>
-        <div className="mt-6 border-t pt-6">
-            <h3 className="font-bold mb-2">Description</h3>
-            <p className="text-slate-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
-        </div>
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100">
-            <a href={job.externalLink} target="_blank" className="block w-full bg-slate-900 text-white text-center py-4 rounded-xl font-bold hover:bg-slate-800 transition">
-                Apply Now
-            </a>
-        </div>
-    </div>
-);
-
-const HomeView = ({ changeTab, jobs, onJobClick }) => (
-    <div className="pb-24">
-        <div className="px-4 mt-6">
-            <SafetyMinuteCard />
-            
-            <SectionTitle title="Recent Jobs" action={
-                <button onClick={() => changeTab('jobs')} className="text-indigo-600 text-xs font-bold hover:text-indigo-800">View All</button>
-            }/>
-            
-            <div className="space-y-2">
-                {jobs.slice(0,3).map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
-            </div>
-        </div>
-    </div>
-);
-
-const JobsView = ({ jobs, onJobClick }) => (
-    <div className="pb-24 px-4 pt-6">
-        <SectionTitle title="Jobs" subtitle="Marketplace" />
-        <div className="space-y-2">
-            {jobs.map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
-        </div>
-    </div>
-);
 
 // --- MAIN CONTENT ---
 const MainContent = () => {
@@ -513,14 +521,12 @@ const MainContent = () => {
   const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
   const [isPro, setIsPro] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [showConflict, setShowConflict] = useState(false); // NEW: Device Conflict State
+  const [showConflict, setShowConflict] = useState(false); 
   const [mongoUser, setMongoUser] = useState(null);
   const { user, isSignedIn } = useUser();
 
   const handleClaimDevice = async () => {
-      // Use local utility for preview safety
-      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
-      
+      const deviceId = getDeviceId();
       await fetch(`${ENV.API_URL}/users/claim-device`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -549,9 +555,7 @@ const MainContent = () => {
   
   useEffect(() => {
     if (isSignedIn && user) {
-        const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
-        
-        // Sync user and send device ID
+        const deviceId = getDeviceId();
         fetch(`${ENV.API_URL}/users/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -577,21 +581,14 @@ const MainContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
-      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
-      <style>{`
-        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-      `}</style>
-
+      <style>{`.scrollbar-thin::-webkit-scrollbar { width: 3px; } .scrollbar-thin::-webkit-scrollbar-track { background: transparent; } .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      {/* Mobile Constraint Container */}
       <div className="w-full max-w-[480px] h-[100dvh] bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
         
-        {/* Main View Area - Handles Scrolling Logic */}
         <div className={`flex-1 overflow-hidden relative flex flex-col`}>
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-hide">
@@ -605,15 +602,19 @@ const MainContent = () => {
              </div>
           )}
           
-          {/* Library View passes error handlers to Chat */}
           {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
-          {activeTab === 'tools' && <div className="flex-1 overflow-y-auto"><ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} /></div>}
+          
+          {/* RESTORED TOOLS VIEW */}
+          {activeTab === 'tools' && (
+             <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
+             </div>
+          )}
         </div>
 
-        {/* Bottom Navigation */}
         <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
             <div className="flex justify-between items-center h-20">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
