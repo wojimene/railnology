@@ -2,44 +2,53 @@ import os
 import sys
 from pymongo import MongoClient
 from openai import OpenAI
+from dotenv import load_dotenv
+from pathlib import Path
+
+# ==========================================
+# 🔧 ENVIRONMENT SETUP
+# ==========================================
+
+# 1. Locate the .env file in the ROOT directory
+current_dir = Path(__file__).resolve().parent
+root_dir = current_dir.parent
+env_path = root_dir / '.env'
+
+print(f"🔍 Looking for .env at: {env_path}")
+
+# 2. Load environment variables
+load_dotenv(dotenv_path=env_path, override=True)
 
 # ==========================================
 # 🔎 RAILNOLOGY SEARCH TESTER
 # ==========================================
 
-# 1. CONFIGURATION
+# 3. CONFIGURATION
 MONGO_URI = (os.getenv("MONGO_URI") or "").strip()
 OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
 
 # Database Config
-# UPDATED: Matches your MongoDB Dashboard exactly (case-sensitive)
 DB_NAME = "railnology" 
 COLLECTION_NAME = "knowledge_chunks" 
-
-# Vector Index Config
-# UPDATED: Set back to 'default' per your Atlas configuration
 VECTOR_INDEX_NAME = "default"
 
 def check_environment():
     if not MONGO_URI or not OPENAI_API_KEY:
-        print("❌ Error: Environment variables MONGO_URI or OPENAI_API_KEY are missing.")
-        print("   Please run this using the 'run_test.bat' file or set them manually.")
+        print("\n❌ CRITICAL ERROR: Missing Keys")
+        print(f"   The script found the .env file at {env_path}, but it didn't contain the keys.")
+        print("   Please check that 'MONGO_URI' and 'OPENAI_API_KEY' are saved in that file.")
         sys.exit(1)
 
 def get_embedding(client, text):
-    """Generates embedding for the search query."""
     text = text.replace("\n", " ")
     response = client.embeddings.create(input=[text], model="text-embedding-3-small")
     return response.data[0].embedding
 
 def vector_search(collection, query_vector):
-    """
-    Performs a Vector Search using MongoDB Aggregation Pipeline.
-    """
     pipeline = [
         {
             "$vectorSearch": {
-                "index": VECTOR_INDEX_NAME, # Should be 'default'
+                "index": VECTOR_INDEX_NAME,
                 "path": "embedding",
                 "queryVector": query_vector,
                 "numCandidates": 100, 
@@ -49,8 +58,9 @@ def vector_search(collection, query_vector):
         {
             "$project": {
                 "_id": 0,
-                "part": 1,
+                "title": 1,
                 "section_id": 1,
+                "part": 1,
                 "text": 1,
                 "score": { "$meta": "vectorSearchScore" }
             }
@@ -67,47 +77,39 @@ def main():
         collection = db[COLLECTION_NAME]
         openai_client = OpenAI(api_key=OPENAI_API_KEY)
         
-        # Quick connection check
         count = collection.count_documents({})
-        print(f"\n✅ Connected to {DB_NAME}.{COLLECTION_NAME}")
+        print(f"✅ Connected to {DB_NAME}.{COLLECTION_NAME}")
         print(f"📊 Total Knowledge Chunks: {count}")
         
-        if count == 0:
-            print("⚠️ WARNING: Collection is empty. Did you run the ingestion script?")
-            
     except Exception as e:
         print(f"❌ Connection Error: {e}")
         return
 
     print("\n🚂 RAILNOLOGY AI SEARCH TEST")
     print("-----------------------------------")
-    print(f"Using Index Name: '{VECTOR_INDEX_NAME}'")
     print("Type 'exit' to quit.\n")
     
     while True:
-        query = input("Ask a compliance question: ")
+        query = input("Ask Railly a question: ")
         if query.lower() in ['exit', 'quit']:
             break
             
-        print("   ... Searching Regulations ...")
+        print("   ... Thinking ...")
         
         try:
-            # 1. Convert Question to Vector
             query_vector = get_embedding(openai_client, query)
-            
-            # 2. Search Database
             results = vector_search(collection, query_vector)
             
-            # 3. Print Results
             if not results:
                 print(f"   ❌ No matches found via index '{VECTOR_INDEX_NAME}'.")
-                print("      (Verify the index status is 'Active' in Atlas)")
             else:
                 for i, doc in enumerate(results):
-                    print(f"\n   [{i+1}] 49 CFR § {doc.get('part')}.{doc.get('section_id')} (Match: {doc.get('score', 0):.4f})")
-                    # Preview first 300 chars
-                    preview = doc.get('text', '')[:300].replace('\n', ' ')
-                    print(f"       \"{preview}...\"")
+                    source_label = f"§ {doc.get('part')}.{doc.get('section_id')}"
+                    if doc.get('part') == 0:
+                        source_label = f"INDUSTRY INTEL: {doc.get('title')}"
+
+                    print(f"\n   [{i+1}] {source_label} (Match: {doc.get('score', 0):.4f})")
+                    print(f"       \"{doc.get('text', '')[:200].replace(chr(10), ' ')}...\"")
                     
         except Exception as e:
             print(f"   ⚠️ Error: {e}")
