@@ -4,16 +4,20 @@ import os
 import time
 import logging
 from datetime import datetime
+from dotenv import load_dotenv # Import dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ==========================================
 # 🚂 RAILNOLOGY PRODUCTION JOB SCRAPER
 # ==========================================
 
 # CONFIGURATION
+# Now loads strictly from .env or system environment
 API_URL = "https://railnology-api.onrender.com/api/jobs"
 
 # RAPID API CONFIGURATION (JSearch)
-# This is much more stable than HTML scraping.
 RAPID_API_KEY = os.getenv("RAPID_API_KEY")
 RAPID_API_HOST = "jsearch.p.rapidapi.com"
 RAPID_API_URL = f"https://{RAPID_API_HOST}/search"
@@ -38,6 +42,7 @@ class RailScraper:
         """
         if not RAPID_API_KEY:
             logger.error("❌ RAPID_API_KEY is missing. Cannot fetch premium job data.")
+            logger.error("   Please ensure RAPID_API_KEY is set in your .env file.")
             return
 
         logger.info(f"🚀 Fetching jobs via RapidAPI for query: '{query}' in '{location}'...")
@@ -133,7 +138,7 @@ def main():
     search_terms = ["Railroad Conductor", "Locomotive Engineer", "Rail Signal", "Track Inspector"]
     
     for term in search_terms:
-        scraper.fetch_jobs_rapidapi(query=term, location="USA")
+        scraper.fetch_jobs_from_rapidapi(query=term, location="USA")
         time.sleep(1) # Respect Rate Limits
             
     # 2. UPLOAD TO DB
