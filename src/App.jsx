@@ -14,13 +14,13 @@ import {
 // 1. AUTHENTICATION & ENVIRONMENT (PREVIEW COMPATIBLE)
 // ==========================================
 
-/* [PRODUCTION NOTE]: 
+/* [PRODUCTION INSTRUCTION]: 
    In your real local/deployment environment where 'npm install' has run:
    1. Uncomment the real Clerk import below.
    2. Delete the "PREVIEW SHIM" block.
 */
 
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 /* --- START: PREVIEW SHIM (Allows UI to render without node_modules) --- */
 const ClerkProvider = ({ children }) => <>{children}</>;
