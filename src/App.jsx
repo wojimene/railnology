@@ -87,6 +87,16 @@ const getCompensation = (job) => {
   return "DOE";
 };
 
+// --- DEVICE ID UTILITY ---
+const getDeviceId = () => {
+    let id = localStorage.getItem('railnology_device_id');
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('railnology_device_id', id);
+    }
+    return id;
+};
+
 // ==========================================
 // 4. SUB-COMPONENTS
 // ==========================================
@@ -329,7 +339,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
+// --- AI CHAT COMPONENT ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
@@ -360,9 +370,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     setLoading(true);
 
     try {
-      // Mock ID for preview environment if getDeviceId is missing, or implement it
-      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'preview_dev') : 'preview_dev';
-      
+      const deviceId = getDeviceId();
       const payload = { 
           query: userMsg, 
           userId: user?.id, 
@@ -430,7 +438,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
           </div>
        </div>
 
-       {/* Chat Area - FULL WIDTH, NO FRAME FOR AI */}
+       {/* Chat Area - Full Width */}
        <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
          {messages.map((m, i) => (
            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
@@ -442,13 +450,11 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                  <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
-              {/* SOURCE PILLS (UPDATED LOGIC) */}
+              {/* SOURCE PILLS */}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
                   {m.sources.map((source, idx) => {
-                    // Logic: Regulation if part > 0, otherwise Industry Info
                     const isRegulation = source.source_type === "Regulation" || (source.part > 0);
-                    
                     return (
                       <a 
                         key={idx}
@@ -462,10 +468,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                         }`}
                       >
                         {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
-                        {isRegulation 
-                            ? `§ ${source.part}.${source.section}` 
-                            : source.title || "Industry Info"
-                        }
+                        {isRegulation ? `§ ${source.part}.${source.section}` : source.title || "Industry Info"}
                       </a>
                     );
                   })}
@@ -556,6 +559,104 @@ const LibraryView = ({ onPaywall, onConflict }) => {
     );
 };
 
+// --- COMPANY & PROFILE VIEWS (RESTORED) ---
+const CompanyView = ({ user, mongoUser, refreshData }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [jobs, setJobs] = useState([]);
+  const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
+
+  useEffect(() => { 
+    if (mongoUser?.companyName) { 
+       fetch(`${ENV.API_URL}/jobs`)
+         .then(res => res.json())
+         .then(data => { 
+            setJobs(data.filter(j => j.company === mongoUser.companyName)); 
+         })
+         .catch(err => console.error("Error fetching company jobs", err));
+    } 
+  }, [mongoUser]);
+
+  const handlePostJob = async () => {
+    if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
+    
+    try {
+      await fetch(`${ENV.API_URL}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
+      });
+      refreshData();
+      
+      const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
+      setJobs([newJob, ...jobs]);
+      setForm({ title: '', location: '', salary: '', category: 'Field' });
+    } catch (e) {
+      console.error("Failed to post job", e);
+      alert("Failed to post job.");
+    }
+  };
+
+  return (
+    <div className="pb-20 bg-slate-50 min-h-full">
+       <div className="h-24 bg-slate-900 relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg">{mongoUser?.companyName || "Your Company"}</h2></div></div></div>
+       <div className="mt-10 px-4 border-b flex space-x-6 text-sm font-medium text-slate-500 overflow-x-auto">{['Overview', 'RailOps', 'Jobs'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>))}</div>
+       <div className="p-4">
+         {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
+         {activeTab === 'railops' && <RailOpsView />}
+         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
+       </div>
+    </div>
+  );
+};
+
+const ProfileView = ({ user, mongoUser, refreshProfile }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ role: 'individual', companyName: '', jobTitle: '' });
+  const [myAssignments, setMyAssignments] = useState([]);
+
+  useEffect(() => { 
+    if (mongoUser) {
+        setFormData({ role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }); 
+        if(mongoUser.email) {
+          fetch(`${ENV.API_URL}/my-assignments?email=${mongoUser.email}`)
+            .then(r => r.json())
+            .then(setMyAssignments)
+            .catch(err => console.error(err));
+        }
+    }
+  }, [mongoUser]);
+
+  const handleSave = async () => { 
+      try {
+        await fetch(`${ENV.API_URL}/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        setIsEditing(false); 
+        refreshProfile(); 
+      } catch (e) {
+        console.error("Save profile failed", e);
+        alert("Failed to save profile.");
+      }
+  };
+
+  return (
+    <div className="pb-20 bg-slate-50 min-h-full">
+       <div className="bg-white border-b pb-6 mb-4"><div className="h-24 bg-slate-900"></div><div className="px-4 -mt-10"><div className="flex justify-between"><img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white" />{!isEditing && <button onClick={() => setIsEditing(true)} className="mt-10 text-xs font-bold bg-slate-100 px-3 py-1 rounded">Edit</button>}</div><h2 className="text-xl font-bold mt-2">{user.fullName}</h2></div></div>
+       <div className="px-4 space-y-4">
+         {isEditing && <div className="bg-white p-4 rounded shadow"><select className="w-full border p-2 mb-2 rounded" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}><option value="individual">Individual</option><option value="company">Company</option></select><input className="w-full border p-2 mb-2" placeholder="Title/Company" value={formData.role === 'company' ? formData.companyName : formData.jobTitle} onChange={e => setFormData({...formData, [formData.role === 'company' ? 'companyName' : 'jobTitle']: e.target.value})} /><button onClick={handleSave} className="w-full bg-indigo-600 text-white py-2 rounded">Save</button></div>}
+         <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments found.</p>}</div>
+       </div>
+    </div>
+  );
+};
+
+const RailOpsView = () => {
+    // Basic placeholder for RailOps functionality to prevent ReferenceError
+    return <div className="p-4 text-center text-sm text-slate-500">RailOps Scheduling Dashboard</div>;
+};
+
 // --- MAIN CONTENT ---
 const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -569,9 +670,7 @@ const MainContent = () => {
   const { user, isSignedIn } = useUser();
 
   const handleClaimDevice = async () => {
-      // Use local utility for preview safety
-      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
-      
+      const deviceId = getDeviceId();
       await fetch(`${ENV.API_URL}/users/claim-device`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -600,9 +699,7 @@ const MainContent = () => {
   
   useEffect(() => {
     if (isSignedIn && user) {
-        const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
-        
-        // Sync user and send device ID
+        const deviceId = getDeviceId();
         fetch(`${ENV.API_URL}/users/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -628,21 +725,14 @@ const MainContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
-      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
-      <style>{`
-        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-      `}</style>
-
+      <style>{`.scrollbar-thin::-webkit-scrollbar { width: 3px; } .scrollbar-thin::-webkit-scrollbar-track { background: transparent; } .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      {/* Mobile Constraint Container */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
         
-        {/* Main View Area - Handles Scrolling Logic */}
         <div className={`flex-1 overflow-hidden relative flex flex-col`}>
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-hide">
@@ -656,13 +746,11 @@ const MainContent = () => {
              </div>
           )}
           
-          {/* Library View passes error handlers to Chat */}
           {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
           
-          {/* RESTORED TOOLS VIEW */}
           {activeTab === 'tools' && (
              <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
@@ -670,7 +758,6 @@ const MainContent = () => {
           )}
         </div>
 
-        {/* Bottom Navigation */}
         <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
             <div className="flex justify-between items-center h-20">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
