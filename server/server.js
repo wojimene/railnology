@@ -1,28 +1,34 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import OpenAI from 'openai';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
 // ==========================================
 // 🔧 ENVIRONMENT SETUP
 // ==========================================
 
-// 1. Resolve current directory for ES Modules
+// Resolve current directory for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 2. Load .env from the ROOT directory (one level up)
-// This fixes the "Missing MONGO_URI" error by finding your existing .env file
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// Explicitly load .env from the ROOT directory (one level up from /server)
+const envPath = path.resolve(__dirname, '../.env');
+const envResult = dotenv.config({ path: envPath });
+
+if (envResult.error) {
+  console.warn(`⚠️  Warning: Could not find .env file at: ${envPath}`);
+} else {
+  console.log(`✅ Loaded configuration from: ${envPath}`);
+}
 
 const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors()); 
 
 // ==========================================
 // 1. SERVER CONFIGURATION
@@ -32,14 +38,24 @@ const MONGO_URI = process.env.MONGO_URI;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Database Constants
-const DB_NAME = "Railnology";
+const DB_NAME = "railnology"; // Lowercase to match your existing production DB
 const COLLECTION_KNOWLEDGE = "knowledge_chunks";
 const VECTOR_INDEX_NAME = "default"; 
 
-// Validation
+// --- CONFIGURATION VALIDATION ---
 if (!MONGO_URI || !OPENAI_API_KEY) {
   console.error("❌ FATAL ERROR: Missing MONGO_URI or OPENAI_API_KEY.");
-  console.error(`   Checked for .env at: ${path.resolve(__dirname, '../.env')}`);
+  console.error(`   Checked for .env at: ${envPath}`);
+  process.exit(1);
+}
+
+// Specific check for the placeholder error you are seeing
+if (MONGO_URI.includes("YOUR_CLUSTER") || MONGO_URI.includes("YOUR_USER")) {
+  console.error("\n❌ CONFIGURATION ERROR: Placeholders detected!");
+  console.error("---------------------------------------------------");
+  console.error("The .env file contains default values (YOUR_CLUSTER).");
+  console.error("You must open 'C:\\railnology\\.env' and paste your REAL MongoDB connection string.");
+  console.error("---------------------------------------------------\n");
   process.exit(1);
 }
 
@@ -61,11 +77,10 @@ MongoClient.connect(MONGO_URI)
   });
 
 // ==========================================
-// 3. API ROUTER (Prefix: /api)
+// 3. API ROUTER
 // ==========================================
 const api = express.Router();
 
-// --- AI HELPER ---
 async function getEmbedding(text) {
   try {
     const response = await openai.embeddings.create({
@@ -85,7 +100,7 @@ api.post('/chat', async (req, res) => {
     const { query, filterPart } = req.body;
     if (!query) return res.status(400).json({ error: "Query required" });
 
-    console.log(`🔍 Railly Processing: "${query}" ${filterPart ? `[Filter: Part ${filterPart}]` : ''}`);
+    console.log(`🔍 Railly Processing: "${query}"`);
 
     const queryVector = await getEmbedding(query);
     const collection = db.collection(COLLECTION_KNOWLEDGE);
@@ -93,7 +108,7 @@ api.post('/chat', async (req, res) => {
     // Construct Aggregation Pipeline
     const pipeline = [];
 
-    // Vector Search Step
+    // 1. Vector Search
     const searchStep = {
       "$vectorSearch": {
         "index": VECTOR_INDEX_NAME,
@@ -109,41 +124,53 @@ api.post('/chat', async (req, res) => {
             "part": { "$eq": filterPart } 
         };
     }
-
     pipeline.push(searchStep);
 
-    // Projection
+    // 2. Projection
     pipeline.push({
       "$project": {
         "_id": 0,
         "part": 1,
         "section_id": 1,
         "text": 1,
+        "title": 1,       
+        "source_type": 1, 
         "score": { "$meta": "vectorSearchScore" }
       }
     });
     
     const results = await collection.aggregate(pipeline).toArray();
 
-    // Context Building
+    // 3. Build Context & Sources
     let contextText = "";
     let sources = [];
 
     if (results.length > 0) {
-      contextText = results.map(doc => `[Source: 49 CFR § ${doc.part}.${doc.section_id}]\n${doc.text}`).join("\n\n");
-      sources = results.map(doc => ({ part: doc.part, section: doc.section_id, score: doc.score }));
+      contextText = results.map(doc => {
+        const label = doc.part > 0 ? `49 CFR § ${doc.part}.${doc.section_id}` : `INDUSTRY INFO: ${doc.title}`;
+        return `[Source: ${label}]\n${doc.text}`;
+      }).join("\n\n");
+
+      sources = results.map(doc => ({ 
+        part: doc.part, 
+        section: doc.section_id, 
+        title: doc.title,
+        source_type: doc.source_type,
+        score: doc.score 
+      }));
     } else {
-      contextText = "No specific regulations found matching this query.";
+      contextText = "No specific regulations or industry data found matching this query.";
     }
 
-    // GPT Prompt
+    // 4. Generate Answer
     const systemPrompt = `
       You are Railly, an expert Federal Railroad Administration (FRA) compliance assistant.
+      
       INSTRUCTIONS:
-      1. Use the provided "CONTEXT" from 49 CFR regulations to answer.
-      2. If a specific Part (e.g., Part ${filterPart}) was requested, prioritize that context.
-      3. Cite your sources explicitly (e.g., "According to § 213.9...").
-      4. If the answer isn't in the context, admit it politely.
+      1. Use the provided "CONTEXT" to answer.
+      2. Cite your sources explicitly.
+      3. Distinguish between Federal Law (Mandatory) and Industry Standards (Best Practice).
+      4. Keep answers professional and concise.
       
       CONTEXT:
       ${contextText}
@@ -155,13 +182,13 @@ api.post('/chat', async (req, res) => {
         { role: "system", content: systemPrompt },
         { role: "user", content: query }
       ],
-      temperature: 0.1
+      temperature: 0.1 
     });
 
     res.json({ answer: completion.choices[0].message.content, sources });
 
   } catch (error) {
-    console.error("❌ Chat Error:", error);
+    console.error("❌ Chat Endpoint Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
