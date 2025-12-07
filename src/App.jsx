@@ -559,7 +559,55 @@ const LibraryView = ({ onPaywall, onConflict }) => {
     );
 };
 
-// --- RESTORED VIEWS ---
+// --- RESTORED VIEWS (Standard Views) ---
+const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel</div>;
+const JobDetailView = ({ job, onBack }) => (
+    <div className="pb-20 p-6 bg-white min-h-screen">
+        <button onClick={onBack} className="mb-4 text-sm flex items-center text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
+        <JobLogo logo={job.logo} company={job.company} size="lg"/>
+        <h2 className="text-2xl font-bold mt-4">{job.title}</h2>
+        <div className="flex items-center text-slate-500 mt-2 text-sm">
+             <Building2 className="w-4 h-4 mr-1"/> {job.company}
+             <span className="mx-2">•</span>
+             <MapPin className="w-4 h-4 mr-1"/> {job.location}
+        </div>
+        <div className="mt-6 border-t pt-6">
+            <h3 className="font-bold mb-2">Description</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100">
+            <a href={job.externalLink} target="_blank" className="block w-full bg-slate-900 text-white text-center py-4 rounded-xl font-bold hover:bg-slate-800 transition">
+                Apply Now
+            </a>
+        </div>
+    </div>
+);
+
+const HomeView = ({ changeTab, jobs, onJobClick }) => (
+    <div className="pb-24">
+        <div className="px-4 mt-6">
+            <SafetyMinuteCard />
+            
+            <SectionTitle title="Recent Jobs" action={
+                <button onClick={() => changeTab('jobs')} className="text-indigo-600 text-xs font-bold hover:text-indigo-800">View All</button>
+            }/>
+            
+            <div className="space-y-2">
+                {jobs.slice(0,3).map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
+            </div>
+        </div>
+    </div>
+);
+
+const JobsView = ({ jobs, onJobClick }) => (
+    <div className="pb-24 px-4 pt-6">
+        <SectionTitle title="Jobs" subtitle="Marketplace" />
+        <div className="space-y-2">
+            {jobs.map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
+        </div>
+    </div>
+);
+
 const CompanyView = ({ user, mongoUser, refreshData }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [jobs, setJobs] = useState([]);
@@ -667,18 +715,16 @@ const MainContent = () => {
   const { user, isSignedIn } = useUser();
 
   const handleClaimDevice = async () => {
-      try {
-        const deviceId = getDeviceId();
-        await fetch(`${ENV.API_URL}/users/claim-device`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, deviceId })
-        });
-        setShowConflict(false);
-        alert("Device claimed. Please retry your search.");
-      } catch (error) {
-        console.error("Failed to claim device:", error);
-      }
+      // Use local utility for preview safety
+      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
+      
+      await fetch(`${ENV.API_URL}/users/claim-device`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, deviceId })
+      });
+      setShowConflict(false);
+      alert("Device claimed. Please retry your search.");
   };
 
   const fetchData = async () => {
