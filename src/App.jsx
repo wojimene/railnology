@@ -375,22 +375,23 @@ const LibraryView = () => {
 
     return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-            {/* 1. TOP SECTION: MANUALS GRID */}
-            <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b border-slate-100 bg-white z-10">
+            {/* 1. TOP SECTION: MANUALS GRID (SCROLLABLE) */}
+            {/* flex-1 with overflow-y-auto makes this section scrollable independently */}
+            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 bg-white border-b border-slate-100 scrollbar-thin">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                <div className="grid grid-cols-4 gap-4 mb-2">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                     {/* "All" Button */}
                     <button 
                         onClick={() => setSelectedContext(null)}
                         className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
                     >
-                        <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shadow-sm mb-1 border border-slate-700 active:scale-95 transition-transform">
-                            <Globe className="w-5 h-5 text-white" />
+                        <div className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center shadow-md mb-1 border border-slate-700 active:scale-95 transition-transform">
+                            <Globe className="w-6 h-6 text-white" />
                         </div>
-                        <span className="text-[9px] font-bold text-slate-700 truncate w-full text-center">All</span>
+                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
 
-                    {manuals.slice(0, 3).map(m => (
+                    {manuals.map(m => (
                         <button 
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
@@ -398,19 +399,19 @@ const LibraryView = () => {
                                 selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'
                             }`}
                         >
-                            <div className={`${m.color} w-12 h-12 rounded-xl flex items-center justify-center shadow-sm mb-1 text-white active:scale-95 transition-transform`}>
-                                <m.icon className="w-5 h-5" />
+                            <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
+                                <m.icon className="w-6 h-6" />
                             </div>
-                            <span className="text-[9px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
+                            <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* 2. BOTTOM SECTION: RAILLY (Fills remaining space) */}
-            <div className="flex-1 min-h-0 relative">
-                {/* We remove the margin/padding here so the chat feels attached to the bottom */}
-                <AIChat contextFilter={selectedContext} className="h-full border-t border-slate-200" />
+            {/* 2. BOTTOM SECTION: RAILLY (FIXED HEIGHT) */}
+            {/* Stays at the bottom, takes 55% of screen height */}
+            <div className="h-[55%] flex-shrink-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
+                <AIChat contextFilter={selectedContext} className="h-full" />
             </div>
         </div>
     );
