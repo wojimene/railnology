@@ -1056,9 +1056,7 @@ const MainContent = () => {
   const { user, isSignedIn } = useUser();
 
   const handleClaimDevice = async () => {
-      // Use local utility for preview safety
-      const deviceId = typeof localStorage !== 'undefined' ? (localStorage.getItem('railnology_device_id') || 'dev_fixed') : 'dev_fixed';
-      
+      const deviceId = getDeviceId();
       await fetch(`${ENV.API_URL}/users/claim-device`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
