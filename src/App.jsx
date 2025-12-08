@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// 1. AUTHENTICATION (PRODUCTION SWITCH) 
+// 1. AUTHENTICATION (PRODUCTION SWITCH)
 // ==========================================
 
 /* [PRODUCTION INSTRUCTION]: 
@@ -684,7 +684,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT ---
+// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
