@@ -582,7 +582,7 @@ const CurveResistanceCalculator = ({ isPro }) => {
             value={degree} 
             onChange={(e) => setDegree(Number(e.target.value))}
             className="w-full accent-indigo-600"
-            disabled={!isPro}
+              disabled={!isPro}
           />
           <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
         </div>
@@ -684,7 +684,7 @@ const DeviceConflictModal = ({ onClaim }) => (
   </div>
 );
 
-// --- AI CHAT COMPONENT (FULL WIDTH, NO FRAME) ---
+// --- AI CHAT COMPONENT ---
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
