@@ -10,54 +10,21 @@ import {
   Play, Radio, Info, Smartphone, Monitor, ClipboardCheck, FileBarChart, CheckSquare
 } from 'lucide-react';
 
-// ==========================================
-// 1. AUTHENTICATION (PRODUCTION SWITCH)
-// ==========================================
-
-/* [PRODUCTION INSTRUCTION]: 
-   When deploying to Render/Vercel:
-   1. UNCOMMENT the import below.
-   2. DELETE the "PREVIEW SHIM" block entirely.
-*/
-
-// import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-/* --- START: PREVIEW SHIM (Keep this for Preview, Delete for Production) --- */
-const ClerkProvider = ({ children }) => <>{children}</>;
-const SignedIn = ({ children }) => <>{children}</>;
-const SignedOut = ({ children }) => null;
-const SignInButton = () => <button>Sign In</button>;
-const UserButton = () => <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">US</div>;
-const useUser = () => ({ 
-  isSignedIn: true, 
-  user: { 
-    id: "user_123", 
-    fullName: "Rail Pro", 
-    primaryEmailAddress: { emailAddress: "demo@railnology.com" } 
-  } 
-});
-
-// Safe Environment Variable Access for Preview
-const getEnv = (key, fallback) => {
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return import.meta.env[key] || fallback;
-    }
-  } catch (e) {}
-  return fallback;
-};
-/* --- END: PREVIEW SHIM --- */
-
+// ✅ PRODUCTION: Real Authentication Import
+import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+// 💡 IMPORT NEW LOGO ASSET 
+import RailnologyLogo from './assets/Railnology.png';
 
 // ==========================================
-// 2. CONFIGURATION & ENVIRONMENT
+// 1. CONFIGURATION & ENVIRONMENT
 // ==========================================
 
 const ENV = {
-  API_URL: getEnv('VITE_API_URL', 'https://api.railnology.com'),
-  CLERK_KEY: getEnv('VITE_CLERK_KEY', 'pk_test_placeholder'), 
-  STRIPE_LINK: getEnv('VITE_STRIPE_PAYMENT_LINK', '#'),
-  ADMIN_EMAIL: getEnv('VITE_ADMIN_EMAIL', 'wayne@railnology.com')
+  // Standard Production Environment Access (Vite)
+  API_URL: import.meta.env.VITE_API_URL || '[https://api.railnology.com](https://api.railnology.com)',
+  CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
+  STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
+  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
 };
 
 const BRAND = {
@@ -78,7 +45,7 @@ const getDeviceId = () => {
 };
 
 // ==========================================
-// 3. HELPER FUNCTIONS
+// 2. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
@@ -98,7 +65,7 @@ const getCompensation = (job) => {
 };
 
 // ==========================================
-// 4. SUB-COMPONENTS
+// 3. SUB-COMPONENTS
 // ==========================================
 
 const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
@@ -121,7 +88,8 @@ const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
         className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
       >
         <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
-          <Train className="w-5 h-5" />
+          {/* LOGO: References imported asset */}
+          <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
         </div>
         <div className="text-left">
           <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
@@ -164,8 +132,9 @@ const JobLogo = ({ logo, company, size="sm" }) => {
   
   if (!logo || err) {
     return (
-      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-xl flex items-center justify-center shadow-sm`}>
-        <Train className="w-6 h-6 text-amber-500" />
+      // FALLBACK: Use new logo image as fallback instead of Lucide icon
+      <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-xl flex items-center justify-center shadow-sm p-1`}>
+        <img src={RailnologyLogo} alt="Railnology Logo" className="w-full h-full object-contain" />
       </div>
     );
   }
@@ -595,7 +564,6 @@ const CurveResistanceCalculator = ({ isPro }) => {
            </div>
            <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
                 style={{ width: `${Math.min((resistance / 240000) * 100, 100)}%` }} 
               ></div>
            </div>
@@ -885,7 +853,7 @@ const LibraryView = ({ onPaywall, onConflict }) => {
                         <button 
                             key={m.id}
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
-                            className={`flex flex-col items-center transition-all ${selectedBoxed?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
+                            className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
                         >
                             <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
                                 <m.icon className="w-6 h-6" />
