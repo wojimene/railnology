@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// 1. AUTHENTICATION (PRODUCTION SWITCH)
+// 1. AUTHENTICATION (PRODUCTION SWITCH) 
 // ==========================================
 
 /* [PRODUCTION INSTRUCTION]: 
