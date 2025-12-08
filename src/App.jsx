@@ -78,7 +78,7 @@ const getDeviceId = () => {
 };
 
 // ==========================================
-// 3. HELPER FUNCTIONS 
+// 3. HELPER FUNCTIONS
 // ==========================================
 
 const formatSalary = (val) => {
