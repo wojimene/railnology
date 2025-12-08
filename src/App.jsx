@@ -1043,10 +1043,6 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
   );
 };
 
-const RailOpsView = () => {
-    return <div className="p-4 text-center text-sm text-slate-500">RailOps Scheduling Dashboard</div>;
-};
-
 // --- MAIN CONTENT ---
 const MainContent = () => {
   const [activeTab, setActiveTab] = useState('home');
