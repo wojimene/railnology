@@ -59,19 +59,19 @@ async function getEmbedding(text) {
 // ==========================================
 api.post('/chat', async (req, res) => {
   try {
-    // Renamed filterPart to filterDomain to handle new rule systems (GCOR, NORAC, ADVISORY)
-    const { query, filterDomain, userId, deviceId } = req.body; 
+    const { query, filterPart, userId, deviceId } = req.body;
     
     if (!query) return res.status(400).json({ error: "Query required" });
     if (!userId || !deviceId) return res.status(400).json({ error: "User/Device identification required" });
 
-    // 1. FETCH USER CONTEXT (Skipping checks for brevity, assuming existing logic is fine)
+    // 1. FETCH USER CONTEXT
     const users = db.collection('users');
     const user = await users.findOne({ clerkId: userId });
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // 2. DEVICE CONCURRENCY CHECK
+    // If the active device in DB doesn't match the requester, block access.
     if (user.activeDeviceId && user.activeDeviceId !== deviceId) {
         return res.status(409).json({ 
             error: "Session active on another device.",
@@ -79,12 +79,17 @@ api.post('/chat', async (req, res) => {
         });
     }
 
-    // 3. USAGE LIMIT CHECK
+    // 3. USAGE LIMIT CHECK (10 per 24h)
     const now = new Date();
     const lastDate = user.lastQueryDate ? new Date(user.lastQueryDate) : new Date(0);
     const isSameDay = now.toDateString() === lastDate.toDateString();
     
+    // Reset count if new day
     let currentCount = isSameDay ? (user.dailyQueryCount || 0) : 0;
+
+    // Check Limit (10 for Free, Unlimited for Pro)
+    // NOTE: In production, 'role' or a specific 'isPro' flag determines this.
+    // For now, we assume 'company' role implies Pro, or check a flag.
     const isPro = user.role === 'company' || user.isPro === true;
     const DAILY_LIMIT = 10;
 
@@ -96,7 +101,7 @@ api.post('/chat', async (req, res) => {
     }
 
     // 4. PERFORM VECTOR SEARCH
-    console.log(`🔍 Railly Processing: "${query}" (Domain: ${filterDomain || 'All'}) (Count: ${currentCount + 1}/${DAILY_LIMIT})`);
+    console.log(`🔍 Railly Processing: "${query}" (Count: ${currentCount + 1}/${DAILY_LIMIT})`);
     
     const queryVector = await getEmbedding(query);
     const collection = db.collection(COLLECTION_KNOWLEDGE);
@@ -112,39 +117,13 @@ api.post('/chat', async (req, res) => {
       }
     };
 
-    // --- NEW DYNAMIC FILTER LOGIC ---
-    let vectorFilter = {};
-    if (filterDomain) {
-        if (filterDomain.match(/^\d+$/)) { // Matches "213", "236", etc. (49 CFR Parts)
-            vectorFilter = { "document_type": "Regulation", "part": { "$eq": filterDomain } };
-        } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
-            // Filter by Operating Rule System
-            vectorFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
-        } else if (filterDomain === "ADVISORY") {
-            // Filter by FRA Safety Guidance
-            vectorFilter = { "document_type": "Safety Guidance", "source": "FRA" };
-        } else if (filterDomain === "CFR") {
-             // Filter by ALL 49 CFR Regulations
-            vectorFilter = { "document_type": "Regulation", "source": "FRA" };
-        }
+    if (filterPart) {
+        searchStep["$vectorSearch"]["filter"] = { "part": { "$eq": filterPart } };
     }
-    
-    if (Object.keys(vectorFilter).length > 0) {
-        searchStep["$vectorSearch"]["filter"] = vectorFilter;
-    }
-    // --- END DYNAMIC FILTER LOGIC ---
-
     pipeline.push(searchStep);
     pipeline.push({
       "$project": {
-        "_id": 0, 
-        "part": 1, 
-        "section_id": 1, 
-        "text": 1, 
-        "title": 1, 
-        "document_type": 1, 
-        "rule_system": 1, // New field
-        "doc_type": 1, // New field
+        "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "source_type": 1,
         "score": { "$meta": "vectorSearchScore" }
       }
     });
@@ -152,31 +131,15 @@ api.post('/chat', async (req, res) => {
     const results = await collection.aggregate(pipeline).toArray();
 
     // 5. GENERATE ANSWER
-    let sources = [];
     let contextText = results.length > 0 
-        ? results.map(doc => {
-            let sourceId;
-            if (doc.document_type === "Regulation") {
-                sourceId = `49 CFR § ${doc.part}.${doc.section_id}`;
-            } else if (doc.document_type === "Operating Rule") {
-                sourceId = `${doc.rule_system} Rule ${doc.section_id}`;
-            } else if (doc.document_type === "Safety Guidance") {
-                sourceId = `${doc.doc_type} from ${doc.title}`;
-            } else {
-                sourceId = doc.title || "Industry Info";
-            }
-            
-            sources.push({ 
-                sourceId: sourceId, 
-                sourceType: doc.document_type,
-                ...doc // Pass back full doc for potential debugging/future use
-            });
-            
-            return `[Source: ${sourceId}]\n${doc.text}`;
-        }).join("\n\n")
-        : "No specific regulations or rules found in the selected domain.";
+        ? results.map(doc => `[Source: 49 CFR § ${doc.part}.${doc.section_id}]\n${doc.text}`).join("\n\n")
+        : "No specific regulations found.";
     
-    const systemPrompt = `You are Railly, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
+    let sources = results.map(doc => ({ 
+        part: doc.part, section: doc.section_id, title: doc.title, source_type: doc.source_type, score: doc.score 
+    }));
+
+    const systemPrompt = `You are Railly, an expert FRA compliance assistant. Use the CONTEXT to answer. Cite sources. CONTEXT: ${contextText}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview", 
@@ -205,7 +168,7 @@ api.post('/chat', async (req, res) => {
 });
 
 // ==========================================
-// 👤 USER MANAGEMENT & DEVICE CONTROL (No changes)
+// 👤 USER MANAGEMENT & DEVICE CONTROL
 // ==========================================
 
 // Sync User (and initialize device)

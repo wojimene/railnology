@@ -12,11 +12,8 @@ import {
 
 // ✅ PRODUCTION: Real Authentication Import
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-
-// --- LOGO REVERSION ---
-// Reverted to the previous placeholder URL as requested.
-// const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=Railnology+App"; // Original URL
-const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=Railnology+App";
+// 💡 IMPORT NEW LOGO ASSET 
+import RailnologyLogo from './assets/Railnology.png';
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
@@ -91,7 +88,7 @@ const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
         className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
       >
         <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
-          {/* LOGO: References updated URL placeholder */}
+          {/* LOGO: References imported asset */}
           <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
         </div>
         <div className="text-left">
@@ -188,8 +185,7 @@ const TrackInspectionForm = ({ onClose }) => {
     };
 
     const handleSave = () => {
-        // Use a message box instead of alert()
-        console.log("Report Saved! (Simulated)");
+        alert("Report Saved! (Simulated)");
         onClose();
     };
 
@@ -528,7 +524,6 @@ const CurveResistanceCalculator = ({ isPro }) => {
   const [resistance, setResistance] = useState(0);
 
   useEffect(() => {
-    // Formula: Resistance (lbs) = 0.8 * Weight (tons) * Curve Degree (degrees)
     const r = 0.8 * weight * degree;
     setResistance(r);
   }, [weight, degree]);
@@ -676,8 +671,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
 
   useEffect(() => {
     if (contextFilter) {
-      // Updated message to reflect the generic domainId
-      setMessages(prev => [...prev, { role: 'system', text: `Context switched to: ${contextFilter.name} (Domain ${contextFilter.domainId}).` }]);
+      setMessages(prev => [...prev, { role: 'system', text: `Context switched to: ${contextFilter.name} (Part ${contextFilter.part}).` }]);
     }
   }, [contextFilter]);
 
@@ -695,8 +689,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
           userId: user?.id, 
           deviceId: deviceId 
       };
-      // --- UPDATED: Pass filterDomain instead of Part ---
-      if (contextFilter) payload.filterDomain = contextFilter.domainId; 
+      if (contextFilter) payload.filterPart = contextFilter.part;
 
       const res = await fetch(`${ENV.API_URL}/chat`, {
         method: 'POST',
@@ -770,33 +763,25 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                  <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
-              {/* SOURCE PILLS - UPDATED LOGIC */}
+              {/* SOURCE PILLS */}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
                   {m.sources.map((source, idx) => {
-                    const type = source.sourceType;
-                    const isRegulation = type === "Regulation";
-                    const isOperatingRule = type === "Operating Rule";
-                    const isGuidance = type === "Safety Guidance";
-                    
-                    const sourceLabel = source.sourceId; // sourceId is now pre-formatted on the server side
-                        
-                    // Define color classes based on the new document types
-                    const colorClass = isRegulation ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                                       isOperatingRule ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                                       isGuidance ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                       "bg-blue-50 text-blue-700 border-blue-200";
-
+                    const isRegulation = source.source_type === "Regulation" || (source.part > 0);
                     return (
                       <a 
                         key={idx}
-                        href="#" // Links handled by the server context, keeping client links generic for now
-                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${colorClass}`}
+                        href={isRegulation ? `https://www.ecfr.gov/current/title-49/part-${source.part}/section-${source.part}.${source.section}` : '#'}
+                        target={isRegulation ? "_blank" : undefined}
+                        rel="noreferrer"
+                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${
+                            isRegulation 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
                       >
-                        {isRegulation && <Shield className="w-3 h-3 mr-1" />}
-                        {isOperatingRule && <ScrollText className="w-3 h-3 mr-1" />}
-                        {isGuidance && <AlertCircle className="w-3 h-3 mr-1" />}
-                        {sourceLabel}
+                        {isRegulation ? <Shield className="w-3 h-3 mr-1" /> : <Info className="w-3 h-3 mr-1" />}
+                        {isRegulation ? `§ ${source.part}.${source.section}` : source.title || "Industry Info"}
                       </a>
                     );
                   })}
@@ -840,32 +825,21 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
 const LibraryView = ({ onPaywall, onConflict }) => {
     const [selectedContext, setSelectedContext] = useState(null);
 
-    // --- EXPANDED MANUALS LIST ---
     const manuals = [
-        // NEW GENERAL DOMAINS
-        // Icons: ScrollText for rules, AlertCircle for guidance
-        { id: 'gcor', name: 'GCOR Rules', icon: ScrollText, color: 'bg-indigo-600', domainId: 'GCOR' },
-        { id: 'norac', name: 'NORAC Rules', icon: ScrollText, color: 'bg-rose-600', domainId: 'NORAC' },
-        { id: 'advisory', name: 'FRA Guidance', icon: AlertCircle, color: 'bg-amber-600', domainId: 'ADVISORY' },
-        
-        // EXISTING 49 CFR PARTS
-        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', domainId: 213 },
-        { id: '236', name: 'Signals', icon: Zap, color: 'bg-yellow-500', domainId: 236 },
-        { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', domainId: 229 },
-        { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-purple-500', domainId: 217 },
-        { id: '214', name: 'Workplace', icon: Shield, color: 'bg-cyan-500', domainId: 214 },
-        { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-pink-500', domainId: 219 },
+        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', part: 213 },
+        { id: '236', name: 'Signals', icon: Zap, color: 'bg-amber-500', part: 236 },
+        { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', part: 229 },
+        { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-indigo-500', part: 217 },
+        { id: '214', name: 'Workplace', icon: Shield, color: 'bg-rose-500', part: 214 },
+        { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-purple-500', part: 219 },
     ];
-    // --- END EXPANDED LIST ---
-
 
     return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
             {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
             <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                {/* GRID CHANGED TO COL-4 TO ACCOMMODATE MORE DOMAINS */}
-                <div className="grid grid-cols-4 gap-3 mb-2"> 
+                <div className="grid grid-cols-3 gap-4 mb-2">
                     <button 
                         onClick={() => setSelectedContext(null)}
                         className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
@@ -873,12 +847,11 @@ const LibraryView = ({ onPaywall, onConflict }) => {
                         <div className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center shadow-md mb-1 border border-slate-700 active:scale-95 transition-transform">
                             <Globe className="w-6 h-6 text-white" />
                         </div>
-                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All Docs</span>
+                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All</span>
                     </button>
                     {manuals.map(m => (
                         <button 
                             key={m.id}
-                            // Pass the full manual object including the new domainId
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
                             className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
                         >
@@ -965,8 +938,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   }, [mongoUser]);
 
   const handlePostJob = async () => {
-    // Replaced alert() with console log/error handling
-    if (!mongoUser?.companyName) return console.error("Please set your Company Name in Profile first.");
+    if (!mongoUser?.companyName) return alert("Please set your Company Name in Profile first.");
     try {
       await fetch(`${ENV.API_URL}/jobs`, {
         method: 'POST',
@@ -979,7 +951,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
       setForm({ title: '', location: '', salary: '', category: 'Field' });
     } catch (e) {
       console.error("Failed to post job", e);
-      // alert("Failed to post job."); // Removed alert()
+      alert("Failed to post job.");
     }
   };
 
@@ -990,7 +962,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        <div className="p-4">
          {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
-         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div>}
+         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div></div>}
        </div>
     </div>
   );
@@ -1024,7 +996,7 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
         refreshProfile(); 
       } catch (e) {
         console.error("Save profile failed", e);
-        // alert("Failed to save profile."); // Removed alert()
+        alert("Failed to save profile.");
       }
   };
 
@@ -1059,8 +1031,7 @@ const MainContent = () => {
           body: JSON.stringify({ userId: user.id, deviceId })
       });
       setShowConflict(false);
-      // Replaced alert() with console log/error handling
-      console.log("Device claimed. Please retry your search.");
+      alert("Device claimed. Please retry your search.");
   };
 
   const fetchData = async () => {
