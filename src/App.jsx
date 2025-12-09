@@ -14,9 +14,8 @@ import {
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // --- LOGO REVERSION ---
-// Reverted to the previous placeholder URL as requested.
-// const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=Railnology+App"; // Original URL
-const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=Railnology+App";
+// Reverted to the first requested logo placeholder (simple black/white text)
+const RailnologyLogo = "https://placehold.co/150x40/000000/ffffff?text=RAILNOLOGY"; 
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
@@ -627,7 +626,7 @@ const PaywallModal = ({ onClose }) => (
       </div>
       <h3 className="text-xl font-extrabold text-center text-slate-900 mb-2">Usage Limit Reached</h3>
       <p className="text-center text-slate-500 text-sm mb-6 leading-relaxed">
-        You've used your 10 free daily searches. Upgrade to Pro for unlimited Railly AI access.
+        You've used your 10 free daily searches. Upgrade to Pro for unlimited Raillie AI access.
       </p>
       <div className="space-y-3">
         <a href={ENV.STRIPE_LINK} target="_blank" className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition flex items-center justify-center">
@@ -661,7 +660,7 @@ const DeviceConflictModal = ({ onClaim }) => (
 const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'system', text: contextFilter ? `Railly active. Focused on: ${contextFilter.name}` : "Hello! I am Railly. Ask me about 49 CFR regulations." }
+    { role: 'system', text: contextFilter ? `Raillie active. Focused on: ${contextFilter.name}` : "Hello! I am Raillie. Ask me about 49 CFR regulations." }
   ]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -752,7 +751,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                 <Bot className="w-5 h-5" />
             </div>
             <div>
-                <h3 className="text-sm font-bold text-slate-800">Railly AI</h3>
+                <h3 className="text-sm font-bold text-slate-800">Raillie AI</h3>
                 <p className="text-[10px] text-slate-500">{contextFilter ? 'Focused Search' : 'Full Compliance Mode'}</p>
             </div>
           </div>
@@ -818,7 +817,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
          <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
             <input 
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
-              placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Railly..."}
+              placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Raillie..."}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
