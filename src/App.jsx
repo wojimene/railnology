@@ -14,8 +14,8 @@ import {
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // --- LOGO REVERSION ---
-// Reverted to the first requested logo placeholder (simple black/white text)
-const RailnologyLogo = "https://placehold.co/150x40/000000/ffffff?text=RAILNOLOGY"; 
+// Reverted to the specific placeholder featuring the train frame
+const RailnologyLogo = "https://placehold.co/150x40/000000/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
@@ -83,8 +83,9 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
 );
 
 const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
-  <div className={`${BRAND.color} text-white p-4 sticky top-0 z-50 shadow-md flex-shrink-0`}>
-    <div className="flex justify-between items-center">
+  // FIX 2: Made Header fixed at the top, removed sticky, added specific height h-16
+  <div className={`${BRAND.color} text-white p-4 h-16 fixed top-0 left-0 right-0 z-50 shadow-md flex-shrink-0`}>
+    <div className="flex justify-between items-center h-full">
       <button 
         onClick={onHomeClick} 
         className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
@@ -663,15 +664,22 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     { role: 'system', text: contextFilter ? `Raillie active. Focused on: ${contextFilter.name}` : "Hello! I am Raillie. Ask me about 49 CFR regulations." }
   ]);
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
+  // Ref to the entire scrollable chat area (for controlling scroll)
+  const scrollContainerRef = useRef(null); 
+  // Ref for the input element
+  const inputRef = useRef(null); 
   const { user } = useUser();
 
-  // Auto-scroll to bottom
+  // FIX: Scroll to top of new content when messages change (after AI response)
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    // We only scroll if we're not loading (meaning a new response arrived)
+    // and if the container exists.
+    if (!loading && scrollContainerRef.current) {
+        // Scroll to the latest message or near the top of the viewport
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, [messages, loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]); // Depend on message length change
 
   useEffect(() => {
     if (contextFilter) {
@@ -686,6 +694,13 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setQuery('');
     setLoading(true);
+
+    // FIX: Blur the input field right after sending the query.
+    // This action forces the mobile browser to dismiss the keyboard 
+    // and reset the viewport zoom/scroll position.
+    if (inputRef.current) {
+        inputRef.current.blur();
+    }
 
     try {
       const deviceId = getDeviceId();
@@ -758,7 +773,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
        </div>
 
        {/* Chat Area - Full Width */}
-       <div className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
+       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
          {messages.map((m, i) => (
            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
               <div className={`text-sm leading-relaxed ${
@@ -810,12 +825,13 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
            </div>
          )}
-         <div ref={scrollRef} className="h-1" />
+         {/* Removed redundant scrollRef div */}
        </div>
 
        <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
          <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
             <input 
+              ref={inputRef} // Added inputRef here
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
               placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Raillie..."}
               value={query}
@@ -1133,10 +1149,15 @@ const MainContent = () => {
       
       {/* Mobile Constraint Container */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
+        {/* Header is now FIXED */}
+        {/* <Header ... /> is defined above and handles fixed position via CSS classes */}
         <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
         
         {/* Main View Area - Handles Scrolling Logic */}
-        <div className={`flex-1 overflow-hidden relative flex flex-col`}>
+        {/* FIX 4: Added padding to main scroll container to account for fixed header (h-16 = pt-16) and fixed footer (h-20 = pb-20) */}
+        <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
+          
+          {/* All views inside this scroll container are now scrollable within the fixed bounds */}
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
@@ -1171,8 +1192,9 @@ const MainContent = () => {
         </div>
 
         {/* Bottom Navigation */}
-        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe sticky bottom-0 z-50 flex-shrink-0">
-            <div className="flex justify-between items-center h-20">
+        {/* FIX 3: Made Bottom Navigation fixed at the bottom, removed sticky, added specific height h-20 */}
+        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 left-0 right-0 z-50 flex-shrink-0">
+            <div className="flex justify-between items-center h-full">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
                 <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
                 <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
