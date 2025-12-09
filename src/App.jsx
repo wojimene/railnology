@@ -990,7 +990,21 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        <div className="p-4">
          {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
-         {activeTab === 'jobs' && <div className="bg-white p-5 rounded-xl border mb-6"><input placeholder="Title" className="w-full border p-2 rounded mb-2 text-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} /><button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button><div className="mt-4 space-y-2">{jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}</div>}
+         {/* FIX: Ensure the JSX conditional is wrapped in a containing element/fragment */}
+         {activeTab === 'jobs' && (
+           <div className="bg-white p-5 rounded-xl border mb-6">
+             <input 
+               placeholder="Title" 
+               className="w-full border p-2 rounded mb-2 text-sm" 
+               value={form.title} 
+               onChange={e => setForm({...form, title: e.target.value})} 
+             />
+             <button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button>
+             <div className="mt-4 space-y-2">
+               {jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}
+             </div>
+           </div>
+         )}
        </div>
     </div>
   );
