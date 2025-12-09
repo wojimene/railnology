@@ -14,8 +14,8 @@ import {
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // --- LOGO REVERSION ---
-// Reverted to the specific placeholder featuring the train frame
-const RailnologyLogo = "https://placehold.co/150x40/000000/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
+// Updated to the requested placeholder URL (with color and train frame)
+const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
@@ -83,8 +83,9 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
 );
 
 const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
-  // FIX 2: Made Header fixed at the top, removed sticky, added specific height h-16
-  <div className={`${BRAND.color} text-white p-4 h-16 fixed top-0 left-0 right-0 z-50 shadow-md flex-shrink-0`}>
+  // FIX: Removed fixed positioning. Now uses sticky top-0, relying on the parent container (Mobile Constraint) 
+  // to be the fixed element that scopes the width. Added shadow-md and z-50 back.
+  <div className={`${BRAND.color} text-white p-4 h-16 sticky top-0 z-50 shadow-md flex-shrink-0`}>
     <div className="flex justify-between items-center h-full">
       <button 
         onClick={onHomeClick} 
@@ -1147,14 +1148,18 @@ const MainContent = () => {
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      {/* Mobile Constraint Container */}
+      {/* FIX 1: Main mobile container now handles the fixed position and width constraints.
+        This ensures the fixed header and footer respect the max-width: 480px.
+      */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
-        {/* Header is now FIXED */}
-        {/* <Header ... /> is defined above and handles fixed position via CSS classes */}
-        <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
+        
+        {/* Header content - Now uses sticky/relative positioning within the fixed parent */}
+        <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
+          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
+        </div>
         
         {/* Main View Area - Handles Scrolling Logic */}
-        {/* FIX 4: Added padding to main scroll container to account for fixed header (h-16 = pt-16) and fixed footer (h-20 = pb-20) */}
+        {/* Padding remains to account for the fixed header/footer heights */}
         <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
           
           {/* All views inside this scroll container are now scrollable within the fixed bounds */}
@@ -1191,9 +1196,8 @@ const MainContent = () => {
           )}
         </div>
 
-        {/* Bottom Navigation */}
-        {/* FIX 3: Made Bottom Navigation fixed at the bottom, removed sticky, added specific height h-20 */}
-        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 left-0 right-0 z-50 flex-shrink-0">
+        {/* Bottom Navigation content - Now fixed and scoped to the max-width */}
+        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 z-50 max-w-[480px] mx-auto w-full">
             <div className="flex justify-between items-center h-full">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
                 <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
