@@ -124,11 +124,8 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // FIX 3: Prioritize operational rules and guidance for the default "All Docs" filter
-    // This dramatically reduces the search space for complex queries that don't need all CFR.
+    // Default: Target Operating Rules and Safety Guidance only for performance
     if (!filterDomain) {
-        // Default "All Docs" scope: Target Operating Rules and Safety Guidance. 
-        // Regulations are explicitly excluded here for performance on multi-rule queries.
         domainFilter = { 
             "$or": [
                 { "document_type": { "$eq": "Operating Rule" } },
@@ -155,8 +152,8 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        "numCandidates": 100,
-        "limit": 5, // Retrieve more candidates initially for Reranking/Hybrid search
+        "numCandidates": 200, // INCREASED candidates for better initial retrieval
+        "limit": 8, // Increased initial limit
         "filter": domainFilter // Apply the domain filter here
       }
     });
