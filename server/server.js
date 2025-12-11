@@ -124,10 +124,11 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // FIX 2: Revert "All Docs" filter to search across ALL document types. 
-    // This leverages the database index on document_type rather than trying to exclude huge sets.
+    // FIX 2: Optimized "All Docs" filter to prioritize Operational/Guidance data, 
+    // including Regulations only if explicitly asked or defaulting to Rules/Guidance.
     if (!filterDomain) {
-        // Default "All Docs" scope: Search across all three document types.
+        // Default "All Docs" scope: Target Operating Rules, Safety Guidance, AND Regulations.
+        // This is the intended behavior when no filter is active.
         domainFilter = { 
             "$or": [
                 { "document_type": { "$eq": "Regulation" } },
