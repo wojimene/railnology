@@ -9,7 +9,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Environment Setup
-const __filename = fileURLToURL(import.meta.url);
+// FIX: Corrected typo from fileURLToURL to fileURLToPath
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -67,6 +68,13 @@ async function getEmbedding(text) {
   });
   return response.data[0].embedding;
 }
+
+// Global list of authorized QA team emails (Load from ENV in production)
+const QA_TEAM_EMAILS = [
+    process.env.ADMIN_EMAIL, // Admin is always QA
+    process.env.QA_MANAGER_EMAIL, // Set this in your .env file
+    'tester@railnology.com' // Placeholder for QA colleague's email
+].filter(Boolean);
 
 // ==========================================
 // 🧠 RAILLY CHAT (RAG + USAGE CONTROLS)
@@ -179,6 +187,7 @@ api.post('/chat', async (req, res) => {
         }).join("\n\n")
         : "No specific regulations or rules found in the selected domain.";
     
+    // Updated prompt with Raillie name
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
 
     const completion = await openai.chat.completions.create({
