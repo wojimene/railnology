@@ -69,12 +69,7 @@ async function getEmbedding(text) {
   return response.data[0].embedding;
 }
 
-// Global list of authorized QA team emails (Load from ENV in production)
-const QA_TEAM_EMAILS = [
-    process.env.ADMIN_EMAIL, // Admin is always QA
-    process.env.QA_MANAGER_EMAIL, // Set this in your .env file
-    'tester@railnology.com' // Placeholder for QA colleague's email
-].filter(Boolean);
+// REMOVED DUPLICATE DECLARATION: const QA_TEAM_EMAILS = [...]
 
 // ==========================================
 // 🧠 RAILLY CHAT (RAG + USAGE CONTROLS)
@@ -93,6 +88,7 @@ api.post('/chat', async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // --- QA EXEMPTION CHECK ---
+    // isQAUser relies on the global QA_TEAM_EMAILS declared earlier.
     const isQAUser = QA_TEAM_EMAILS.includes(user.email);
     // -------------------------
 
@@ -248,16 +244,16 @@ api.post('/users/sync', async (req, res) => {
 });
 
 api.post('/users/claim-device', async (req, res) => {
-    try {
-        const { userId, deviceId } = req.body;
-        if (!userId || !deviceId) return res.status(400).json({ error: "Missing data" });
+  try {
+    const { userId, deviceId } = req.body;
+    if (!userId || !deviceId) return res.status(400).json({ error: "Missing data" });
 
-        await db.collection('users').updateOne(
-            { clerkId: userId },
-            { $set: { activeDeviceId: deviceId } }
-        );
-        res.json({ success: true, message: "Device claimed successfully." });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    await db.collection('users').updateOne(
+      { clerkId: userId },
+      { $set: { activeDeviceId: deviceId } }
+    );
+    res.json({ success: true, message: "Device claimed successfully." });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- STANDARD ENDPOINTS ---
