@@ -124,10 +124,8 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // FIX 4: Reverting 'All Docs' filter to include 'Regulation' document type again
-    // This restores the intended full document search functionality.
+    // Default "All Docs" scope: Target ALL document types.
     if (!filterDomain) {
-        // Default "All Docs" scope: Target ALL document types.
         domainFilter = { 
             "$or": [
                 { "document_type": { "$eq": "Regulation" } },
@@ -240,6 +238,42 @@ api.post('/chat', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// ==========================================
+// ⚙️ DIAGNOSTIC ENDPOINT (NEW)
+// ==========================================
+api.get('/diag/db', async (req, res) => {
+    try {
+        if (!db) {
+            return res.status(503).json({ error: "Database connection not initialized." });
+        }
+        
+        // List all collection names in the current connected database
+        const collections = await db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+        const knowledgeCollectionExists = collectionNames.includes(COLLECTION_KNOWLEDGE);
+
+        let knowledgeCount = 0;
+        if (knowledgeCollectionExists) {
+            knowledgeCount = await db.collection(COLLECTION_KNOWLEDGE).countDocuments({});
+        }
+
+        res.json({
+            status: "OK",
+            db_name: DB_NAME,
+            expected_knowledge_collection: COLLECTION_KNOWLEDGE,
+            knowledge_collection_exists: knowledgeCollectionExists,
+            knowledge_document_count: knowledgeCount,
+            all_collections_found: collectionNames,
+            environment: NODE_ENV.toUpperCase(),
+        });
+
+    } catch (e) {
+        console.error("❌ Diagnostic Error:", e);
+        res.status(500).json({ error: "Failed to run diagnostics." });
+    }
+});
+
 
 // ... (Other standard endpoints remain unchanged)
 
