@@ -124,10 +124,13 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // Default: Target Operating Rules and Safety Guidance only for performance
+    // FIX 4: Reverting 'All Docs' filter to include 'Regulation' document type again
+    // This restores the intended full document search functionality.
     if (!filterDomain) {
+        // Default "All Docs" scope: Target ALL document types.
         domainFilter = { 
             "$or": [
+                { "document_type": { "$eq": "Regulation" } },
                 { "document_type": { "$eq": "Operating Rule" } },
                 { "document_type": { "$eq": "Safety Guidance" } }
             ]
@@ -152,7 +155,7 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        "numCandidates": 500, // INCREASED candidates for better initial retrieval
+        "numCandidates": 200, // INCREASED candidates for better initial retrieval
         "limit": 8, // Increased initial limit
         "filter": domainFilter // Apply the domain filter here
       }
