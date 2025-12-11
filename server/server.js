@@ -152,7 +152,7 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        "numCandidates": 200, // INCREASED candidates for better initial retrieval
+        "numCandidates": 500, // INCREASED candidates for better initial retrieval
         "limit": 8, // Increased initial limit
         "filter": domainFilter // Apply the domain filter here
       }
