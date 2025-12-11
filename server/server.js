@@ -27,7 +27,7 @@ const NODE_ENV = process.env.NODE_ENV || 'production';
 const IS_QA_ENV = NODE_ENV === 'qa';
 // Database switching: Uses 'railnology_qa' database if NODE_ENV is set to 'qa'
 const DB_NAME = IS_QA_ENV ? "railnology_qa" : "railnology"; 
-const COLLECTION_KNOWLEDGE = "knowledge_chunks";
+const COLLECTION_KNOWLEDGE = "knowledge_base"; // FIX: Updated collection name to match database
 const VECTOR_INDEX_NAME = "default"; 
 
 // Global list of authorized QA team emails (Load from ENV in production)
@@ -117,7 +117,7 @@ api.post('/chat', async (req, res) => {
     console.log(`🔍 Raillie Processing: "${query}" (Domain: ${filterDomain || 'All'}) (User: ${user.email})`);
     
     const queryVector = await getEmbedding(query);
-    const collection = db.collection(COLLECTION_KNOWLEDGE);
+    const collection = db.collection(COLLECTION_KNOWLEDGE); // Uses updated knowledge base collection name
     
     const pipeline = [];
     
