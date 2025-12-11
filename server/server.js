@@ -9,7 +9,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Environment Setup
-// FIX: Corrected typo from fileURLToURL to fileURLToPath
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -69,8 +68,6 @@ async function getEmbedding(text) {
   return response.data[0].embedding;
 }
 
-// REMOVED DUPLICATE DECLARATION: const QA_TEAM_EMAILS = [...]
-
 // ==========================================
 // 🧠 RAILLY CHAT (RAG + USAGE CONTROLS)
 // ==========================================
@@ -88,7 +85,6 @@ api.post('/chat', async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // --- QA EXEMPTION CHECK ---
-    // isQAUser relies on the global QA_TEAM_EMAILS declared earlier.
     const isQAUser = QA_TEAM_EMAILS.includes(user.email);
     // -------------------------
 
@@ -117,42 +113,75 @@ api.post('/chat', async (req, res) => {
         });
     }
 
-    // 4. PERFORM VECTOR SEARCH
+    // 4. PERFORM HYBRID VECTOR SEARCH
     console.log(`🔍 Raillie Processing: "${query}" (Domain: ${filterDomain || 'All'}) (User: ${user.email})`);
     
     const queryVector = await getEmbedding(query);
     const collection = db.collection(COLLECTION_KNOWLEDGE);
     
     const pipeline = [];
-    const searchStep = {
+    
+    // Dynamic Filter Logic (for vectorSearch.filter and $match)
+    let domainFilter = {};
+    
+    // FIX: Optimized "All Docs" filter to exclude massive CFR corpus by default
+    // If filterDomain is null (All Docs selected), we default to search Operating Rules and Guidance,
+    // otherwise, we apply the specific filter.
+    if (!filterDomain) {
+        // Default "All Docs" scope: Target Operating Rules and Safety Guidance (Excluding specific CFR Parts by default)
+        domainFilter = { 
+            "$or": [
+                { "document_type": { "$eq": "Operating Rule" } },
+                { "document_type": { "$eq": "Safety Guidance" } }
+            ]
+        };
+    } else if (String(filterDomain).match(/^\d+$/)) { 
+        // 49 CFR Part Filter
+        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
+    } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
+        // Operating Rule Filter
+        domainFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
+    } else if (filterDomain === "ADVISORY") {
+        // FRA Guidance Filter
+        domainFilter = { "document_type": "Safety Guidance", "source": "FRA" };
+    } else if (filterDomain === "CFR") {
+        // If they explicitly filter to ALL CFR, search all regulations
+        domainFilter = { "document_type": "Regulation", "source": "FRA" };
+    }
+    
+    // A. Vector Search Step (Semantic Search)
+    pipeline.push({
       "$vectorSearch": {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100,
-        "limit": 3
+        "limit": 5, // Retrieve more candidates initially for Reranking/Hybrid search
+        "filter": domainFilter // Apply the domain filter here
       }
-    };
+    });
 
-    // Dynamic Filter Logic
-    let vectorFilter = {};
-    if (filterDomain) {
-        if (String(filterDomain).match(/^\d+$/)) { 
-            vectorFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
-        } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
-            vectorFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
-        } else if (filterDomain === "ADVISORY") {
-            vectorFilter = { "document_type": "Safety Guidance", "source": "FRA" };
-        } else if (filterDomain === "CFR") {
-             vectorFilter = { "document_type": "Regulation", "source": "FRA" };
-        }
-    }
-    
-    if (Object.keys(vectorFilter).length > 0) {
-        searchStep["$vectorSearch"]["filter"] = vectorFilter;
+    // B. Post-Retrieval Keyword Filtering ($match - Hybrid Search Component)
+    // This step refines the vector results by ensuring keyword relevance, especially for rule numbers.
+    const keywords = query.split(/\s+/).filter(k => k.length > 2);
+    if (keywords.length > 0) {
+        // Build an OR query to match keywords in the text or section_id
+        const keywordQuery = keywords.map(keyword => ({
+            "$or": [
+                { "text": { "$regex": keyword, "$options": "i" } },
+                { "section_id": { "$regex": keyword, "$options": "i" } }
+            ]
+        }));
+        
+        // Match the documents retrieved by vector search against the keyword filter
+        pipeline.push({
+            "$match": { "$and": keywordQuery }
+        });
     }
 
-    pipeline.push(searchStep);
+    // C. Re-limit and Project (Final Step)
+    pipeline.push({ "$limit": 3 }); // Take the top 3 results after filtering
+
     pipeline.push({
       "$project": {
         "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "document_type": 1, "rule_system": 1, "doc_type": 1,
@@ -170,9 +199,9 @@ api.post('/chat', async (req, res) => {
             if (doc.document_type === "Regulation") {
                 sourceId = `49 CFR § ${doc.part}.${doc.section_id}`;
             } else if (doc.document_type === "Operating Rule") {
-                sourceId = `${doc.rule_system} Rule ${doc.section_id.split('-part')[0]}`; 
+                sourceId = `${doc.rule_system} Rule ${doc.section_id.split('_p')[0].split('_').pop()}`; // Clean rule ID: GCOR_6.27_p1 -> 6.27
             } else if (doc.document_type === "Safety Guidance") {
-                sourceId = `${doc.doc_type} Ref: ${doc.title}`;
+                sourceId = `${doc.doc_type} Ref: ${doc.title.substring(0, 30)}...`;
             } else {
                 sourceId = doc.title || "Industry Info";
             }
@@ -181,7 +210,7 @@ api.post('/chat', async (req, res) => {
             
             return `[Source: ${sourceId}]\n${doc.text}`;
         }).join("\n\n")
-        : "No specific regulations or rules found in the selected domain.";
+        : "No specific regulations or rules found in the selected domain. Please try selecting a more focused domain filter.";
     
     // Updated prompt with Raillie name
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
@@ -244,16 +273,16 @@ api.post('/users/sync', async (req, res) => {
 });
 
 api.post('/users/claim-device', async (req, res) => {
-  try {
-    const { userId, deviceId } = req.body;
-    if (!userId || !deviceId) return res.status(400).json({ error: "Missing data" });
+    try {
+        const { userId, deviceId } = req.body;
+        if (!userId || !deviceId) return res.status(400).json({ error: "Missing data" });
 
-    await db.collection('users').updateOne(
-      { clerkId: userId },
-      { $set: { activeDeviceId: deviceId } }
-    );
-    res.json({ success: true, message: "Device claimed successfully." });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+        await db.collection('users').updateOne(
+            { clerkId: userId },
+            { $set: { activeDeviceId: deviceId } }
+        );
+        res.json({ success: true, message: "Device claimed successfully." });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- STANDARD ENDPOINTS ---
