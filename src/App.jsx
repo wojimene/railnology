@@ -13,8 +13,7 @@ import {
 // ✅ PRODUCTION: Real Authentication Import
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
-// --- LOGO REVERSION ---
-// Updated to the requested placeholder URL (with color and train frame)
+// --- LOGO ---
 const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
 
 // ==========================================
@@ -22,8 +21,10 @@ const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOG
 // ==========================================
 
 const ENV = {
-  // Standard Production Environment Access (Vite)
-  API_URL: import.meta.env.VITE_API_URL || '[https://api.railnology.com](https://api.railnology.com)',
+  // Production URL
+  API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
+  // QA URL - Must be set in Vite config/environment file
+  QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://api.railnology.qa', 
   CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
   STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
   ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
@@ -35,6 +36,12 @@ const BRAND = {
   color: "bg-slate-900", 
   accent: "text-amber-500" 
 };
+
+// Global list of authorized QA team emails (MUST match server.js list)
+const QA_TEAM_EMAILS = [
+    ENV.ADMIN_EMAIL,
+    'tester@railnology.com' // QA Colleague's Placeholder Email
+];
 
 // --- DEVICE ID UTILITY ---
 const getDeviceId = () => {
@@ -82,9 +89,8 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
   </button>
 );
 
-const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
-  // FIX: Removed fixed positioning. Now uses sticky top-0, relying on the parent container (Mobile Constraint) 
-  // to be the fixed element that scopes the width. Added shadow-md and z-50 back.
+// --- HEADER UPDATED FOR QA BADGE ---
+const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeClick }) => (
   <div className={`${BRAND.color} text-white p-4 h-16 sticky top-0 z-50 shadow-md flex-shrink-0`}>
     <div className="flex justify-between items-center h-full">
       <button 
@@ -92,13 +98,15 @@ const Header = ({ isOffline, isPro, onProfileClick, onHomeClick }) => (
         className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
       >
         <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
-          {/* LOGO: References updated URL placeholder */}
           <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
         </div>
         <div className="text-left">
           <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
           <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase mt-0.5">
-            Platform {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
+            Platform 
+            {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
+            {/* QA Badge Logic: Red if actively using QA URL, Amber if QA user on Prod URL */}
+            {isQA && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow ${currentApiUrl === ENV.QA_API_URL ? 'bg-red-600' : 'bg-amber-500'}`}>QA</span>}
           </p>
         </div>
       </button>
@@ -136,7 +144,6 @@ const JobLogo = ({ logo, company, size="sm" }) => {
   
   if (!logo || err) {
     return (
-      // FALLBACK: Use new logo image as fallback instead of Lucide icon
       <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-xl flex items-center justify-center shadow-sm p-1`}>
         <img src={RailnologyLogo} alt="Railnology Logo" className="w-full h-full object-contain" />
       </div>
@@ -189,7 +196,6 @@ const TrackInspectionForm = ({ onClose }) => {
     };
 
     const handleSave = () => {
-        // Use a message box instead of alert()
         console.log("Report Saved! (Simulated)");
         onClose();
     };
@@ -659,32 +665,24 @@ const DeviceConflictModal = ({ onClaim }) => (
 );
 
 // --- AI CHAT COMPONENT ---
-const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
+const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([
     { role: 'system', text: contextFilter ? `Raillie active. Focused on: ${contextFilter.name}` : "Hello! I am Raillie. Ask me about 49 CFR regulations." }
   ]);
   const [loading, setLoading] = useState(false);
-  // Ref to the entire scrollable chat area (for controlling scroll)
   const scrollContainerRef = useRef(null); 
-  // Ref for the input element
   const inputRef = useRef(null); 
   const { user } = useUser();
 
-  // FIX: Scroll to top of new content when messages change (after AI response)
   useEffect(() => {
-    // We only scroll if we're not loading (meaning a new response arrived)
-    // and if the container exists.
     if (!loading && scrollContainerRef.current) {
-        // Scroll to the latest message or near the top of the viewport
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]); // Depend on message length change
+  }, [messages.length]); 
 
   useEffect(() => {
     if (contextFilter) {
-      // Updated message to reflect the generic domainId
       setMessages(prev => [...prev, { role: 'system', text: `Context switched to: ${contextFilter.name} (Domain ${contextFilter.domainId}).` }]);
     }
   }, [contextFilter]);
@@ -696,9 +694,6 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
     setQuery('');
     setLoading(true);
 
-    // FIX: Blur the input field right after sending the query.
-    // This action forces the mobile browser to dismiss the keyboard 
-    // and reset the viewport zoom/scroll position.
     if (inputRef.current) {
         inputRef.current.blur();
     }
@@ -710,10 +705,10 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
           userId: user?.id, 
           deviceId: deviceId 
       };
-      // --- UPDATED: Pass filterDomain instead of Part ---
       if (contextFilter) payload.filterDomain = contextFilter.domainId; 
 
-      const res = await fetch(`${ENV.API_URL}/chat`, {
+      // --- USE DYNAMIC API URL ---
+      const res = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -794,7 +789,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                     const isOperatingRule = type === "Operating Rule";
                     const isGuidance = type === "Safety Guidance";
                     
-                    const sourceLabel = source.sourceId; // sourceId is now pre-formatted on the server side
+                    const sourceLabel = source.sourceId; 
                         
                     // Define color classes based on the new document types
                     const colorClass = isRegulation ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
@@ -805,7 +800,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
                     return (
                       <a 
                         key={idx}
-                        href="#" // Links handled by the server context, keeping client links generic for now
+                        href="#" 
                         className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${colorClass}`}
                       >
                         {isRegulation && <Shield className="w-3 h-3 mr-1" />}
@@ -826,13 +821,12 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
            </div>
          )}
-         {/* Removed redundant scrollRef div */}
        </div>
 
        <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
          <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
             <input 
-              ref={inputRef} // Added inputRef here
+              ref={inputRef} 
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
               placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Raillie..."}
               value={query}
@@ -853,18 +847,13 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict }) => {
 };
 
 // --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
-const LibraryView = ({ onPaywall, onConflict }) => {
+const LibraryView = ({ onPaywall, onConflict, apiUrl }) => {
     const [selectedContext, setSelectedContext] = useState(null);
 
-    // --- EXPANDED MANUALS LIST ---
     const manuals = [
-        // NEW GENERAL DOMAINS
-        // Icons: ScrollText for rules, AlertCircle for guidance
         { id: 'gcor', name: 'GCOR Rules', icon: ScrollText, color: 'bg-indigo-600', domainId: 'GCOR' },
         { id: 'norac', name: 'NORAC Rules', icon: ScrollText, color: 'bg-rose-600', domainId: 'NORAC' },
         { id: 'advisory', name: 'FRA Guidance', icon: AlertCircle, color: 'bg-amber-600', domainId: 'ADVISORY' },
-        
-        // EXISTING 49 CFR PARTS
         { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', domainId: 213 },
         { id: '236', name: 'Signals', icon: Zap, color: 'bg-yellow-500', domainId: 236 },
         { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', domainId: 229 },
@@ -872,7 +861,6 @@ const LibraryView = ({ onPaywall, onConflict }) => {
         { id: '214', name: 'Workplace', icon: Shield, color: 'bg-cyan-500', domainId: 214 },
         { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-pink-500', domainId: 219 },
     ];
-    // --- END EXPANDED LIST ---
 
 
     return (
@@ -880,7 +868,6 @@ const LibraryView = ({ onPaywall, onConflict }) => {
             {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
             <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
                 <SectionTitle title="Library" subtitle="AI Research & Manuals" />
-                {/* GRID CHANGED TO COL-4 TO ACCOMMODATE MORE DOMAINS */}
                 <div className="grid grid-cols-4 gap-3 mb-2"> 
                     <button 
                         onClick={() => setSelectedContext(null)}
@@ -894,7 +881,6 @@ const LibraryView = ({ onPaywall, onConflict }) => {
                     {manuals.map(m => (
                         <button 
                             key={m.id}
-                            // Pass the full manual object including the new domainId
                             onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
                             className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
                         >
@@ -909,14 +895,14 @@ const LibraryView = ({ onPaywall, onConflict }) => {
 
             {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
             <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
-                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} />
+                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} apiUrl={apiUrl} />
             </div>
         </div>
     );
 };
 
 // --- RESTORED VIEWS (Standard Views) ---
-const AdminView = () => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel</div>;
+const AdminView = ({ apiUrl }) => <div className="p-4 bg-white m-4 rounded shadow">Admin Panel ({apiUrl})</div>;
 const JobDetailView = ({ job, onBack }) => (
     <div className="pb-20 p-6 bg-white min-h-screen">
         <button onClick={onBack} className="mb-4 text-sm flex items-center text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
@@ -939,9 +925,11 @@ const JobDetailView = ({ job, onBack }) => (
     </div>
 );
 
-const HomeView = ({ changeTab, jobs, onJobClick }) => (
+const HomeView = ({ changeTab, jobs, onJobClick, apiUrl }) => (
     <div className="pb-24">
         <div className="px-4 mt-6">
+            {/* Show current API URL in Admin/QA view */}
+            {apiUrl === ENV.QA_API_URL && <div className="text-center text-red-600 text-xs font-bold mb-3 p-2 bg-red-50 rounded-lg border border-red-200">QA ENVIRONMENT ACTIVE</div>}
             <SafetyMinuteCard />
             
             <SectionTitle title="Recent Jobs" action={
@@ -964,27 +952,26 @@ const JobsView = ({ jobs, onJobClick }) => (
     </div>
 );
 
-const CompanyView = ({ user, mongoUser, refreshData }) => {
+const CompanyView = ({ user, mongoUser, refreshData, apiUrl }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [jobs, setJobs] = useState([]);
   const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
 
   useEffect(() => { 
     if (mongoUser?.companyName) { 
-       fetch(`${ENV.API_URL}/jobs`)
+       fetch(`${apiUrl}/jobs`)
          .then(res => res.json())
          .then(data => { 
             setJobs(data.filter(j => j.company === mongoUser.companyName)); 
          })
          .catch(err => console.error("Error fetching company jobs", err));
     } 
-  }, [mongoUser]);
+  }, [mongoUser, apiUrl]);
 
   const handlePostJob = async () => {
-    // Replaced alert() with console log/error handling
     if (!mongoUser?.companyName) return console.error("Please set your Company Name in Profile first.");
     try {
-      await fetch(`${ENV.API_URL}/jobs`, {
+      await fetch(`${apiUrl}/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
@@ -995,7 +982,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
       setForm({ title: '', location: '', salary: '', category: 'Field' });
     } catch (e) {
       console.error("Failed to post job", e);
-      // alert("Failed to post job."); // Removed alert()
     }
   };
 
@@ -1006,7 +992,6 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
        <div className="p-4">
          {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
-         {/* FIX: Ensure the JSX conditional is wrapped in a containing element/fragment */}
          {activeTab === 'jobs' && (
            <div className="bg-white p-5 rounded-xl border mb-6">
              <input 
@@ -1026,7 +1011,7 @@ const CompanyView = ({ user, mongoUser, refreshData }) => {
   );
 };
 
-const ProfileView = ({ user, mongoUser, refreshProfile }) => {
+const ProfileView = ({ user, mongoUser, refreshProfile, apiUrl }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ role: 'individual', companyName: '', jobTitle: '' });
   const [myAssignments, setMyAssignments] = useState([]);
@@ -1035,17 +1020,17 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
     if (mongoUser) {
         setFormData({ role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }); 
         if(mongoUser.email) {
-          fetch(`${ENV.API_URL}/my-assignments?email=${mongoUser.email}`)
+          fetch(`${apiUrl}/my-assignments?email=${mongoUser.email}`)
             .then(r => r.json())
             .then(setMyAssignments)
             .catch(err => console.error(err));
         }
     }
-  }, [mongoUser]);
+  }, [mongoUser, apiUrl]);
 
   const handleSave = async () => { 
       try {
-        await fetch(`${ENV.API_URL}/users/${user.id}`, {
+        await fetch(`${apiUrl}/users/${user.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -1054,7 +1039,6 @@ const ProfileView = ({ user, mongoUser, refreshProfile }) => {
         refreshProfile(); 
       } catch (e) {
         console.error("Save profile failed", e);
-        // alert("Failed to save profile."); // Removed alert()
       }
   };
 
@@ -1081,15 +1065,22 @@ const MainContent = () => {
   const [mongoUser, setMongoUser] = useState(null);
   const { user, isSignedIn } = useUser();
 
+  // --- QA/PROD API URL DETERMINATION ---
+  // If the URL contains 'qa' OR the user is a QA team member, use the QA API URL
+  const isQAUser = isSignedIn && QA_TEAM_EMAILS.includes(user.primaryEmailAddress?.emailAddress);
+  const useQABase = window.location.hostname.includes('qa') || isQAUser;
+  const apiUrl = useQABase ? ENV.QA_API_URL : ENV.API_URL;
+  // ------------------------------------
+
+
   const handleClaimDevice = async () => {
       const deviceId = getDeviceId();
-      await fetch(`${ENV.API_URL}/users/claim-device`, {
+      await fetch(`${apiUrl}/users/claim-device`, { // Uses dynamic apiUrl
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, deviceId })
       });
       setShowConflict(false);
-      // Replaced alert() with console log/error handling
       console.log("Device claimed. Please retry your search.");
   };
 
@@ -1097,9 +1088,9 @@ const MainContent = () => {
     setLoading(true);
     try {
       const [j, g, si] = await Promise.all([
-        fetch(`${ENV.API_URL}/jobs`).then(r => r.ok ? r.json() : []),
-        fetch(`${ENV.API_URL}/glossary`).then(r => r.ok ? r.json() : []),
-        fetch(`${ENV.API_URL}/signals`).then(r => r.ok ? r.json() : [])
+        fetch(`${apiUrl}/jobs`).then(r => r.ok ? r.json() : []),
+        fetch(`${apiUrl}/glossary`).then(r => r.ok ? r.json() : []),
+        fetch(`${apiUrl}/signals`).then(r => r.ok ? r.json() : [])
       ]);
       setData({ jobs: j, glossary: g, signals: si });
     } catch (e) { 
@@ -1108,12 +1099,12 @@ const MainContent = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, []);
-  
+  useEffect(() => { fetchData(); }, [apiUrl]); // Refetch when API URL changes
+
   useEffect(() => {
     if (isSignedIn && user) {
         const deviceId = getDeviceId();
-        fetch(`${ENV.API_URL}/users/sync`, {
+        fetch(`${apiUrl}/users/sync`, { // Uses dynamic apiUrl
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1127,7 +1118,7 @@ const MainContent = () => {
         .then(setMongoUser)
         .catch(err => console.error("User sync failed:", err));
     }
-  }, [isSignedIn, user]);
+  }, [isSignedIn, user, apiUrl]); 
 
   useEffect(() => {
     if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
@@ -1138,7 +1129,6 @@ const MainContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
-      {/* GLOBAL STYLES FOR THIN SCROLLBAR */}
       <style>{`
         .scrollbar-thin::-webkit-scrollbar { width: 3px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
@@ -1148,25 +1138,22 @@ const MainContent = () => {
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      {/* FIX 1: Main mobile container now handles the fixed position and width constraints.
-        This ensures the fixed header and footer respect the max-width: 480px.
-      */}
+      {/* Main mobile container now handles the fixed position and width constraints. */}
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         
-        {/* Header content - Now uses sticky/relative positioning within the fixed parent */}
+        {/* Header content */}
         <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
-          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} />
+          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} isQA={isQAUser} currentApiUrl={apiUrl} />
         </div>
         
         {/* Main View Area - Handles Scrolling Logic */}
-        {/* Padding remains to account for the fixed header/footer heights */}
         <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
           
           {/* All views inside this scroll container are now scrollable within the fixed bounds */}
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
-                {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} />}
-                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} />
+                {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} apiUrl={apiUrl} />}
+                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} apiUrl={apiUrl} />
              </div>
           )}
           {activeTab === 'jobs' && (
@@ -1176,10 +1163,10 @@ const MainContent = () => {
           )}
           
           {/* Library View passes error handlers to Chat */}
-          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} />}
+          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} apiUrl={apiUrl} />}
           
-          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} /></div>}
-          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} /></div>}
+          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} apiUrl={apiUrl} /></div>}
+          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} apiUrl={apiUrl} /></div>}
           
           {/* RESTORED TOOLS VIEW */}
           {activeTab === 'tools' && (
