@@ -124,14 +124,13 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // FIX 2: Optimized "All Docs" filter to prioritize Operational/Guidance data, 
-    // including Regulations only if explicitly asked or defaulting to Rules/Guidance.
+    // FIX 3: Prioritize operational rules and guidance for the default "All Docs" filter
+    // This dramatically reduces the search space for complex queries that don't need all CFR.
     if (!filterDomain) {
-        // Default "All Docs" scope: Target Operating Rules, Safety Guidance, AND Regulations.
-        // This is the intended behavior when no filter is active.
+        // Default "All Docs" scope: Target Operating Rules and Safety Guidance. 
+        // Regulations are explicitly excluded here for performance on multi-rule queries.
         domainFilter = { 
             "$or": [
-                { "document_type": { "$eq": "Regulation" } },
                 { "document_type": { "$eq": "Operating Rule" } },
                 { "document_type": { "$eq": "Safety Guidance" } }
             ]
