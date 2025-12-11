@@ -124,19 +124,19 @@ api.post('/chat', async (req, res) => {
     // Dynamic Filter Logic (for vectorSearch.filter and $match)
     let domainFilter = {};
     
-    // FIX: Optimized "All Docs" filter to exclude massive CFR corpus by default
-    // If filterDomain is null (All Docs selected), we default to search Operating Rules and Guidance,
-    // otherwise, we apply the specific filter.
+    // FIX 2: Revert "All Docs" filter to search across ALL document types. 
+    // This leverages the database index on document_type rather than trying to exclude huge sets.
     if (!filterDomain) {
-        // Default "All Docs" scope: Target Operating Rules and Safety Guidance (Excluding specific CFR Parts by default)
+        // Default "All Docs" scope: Search across all three document types.
         domainFilter = { 
             "$or": [
+                { "document_type": { "$eq": "Regulation" } },
                 { "document_type": { "$eq": "Operating Rule" } },
                 { "document_type": { "$eq": "Safety Guidance" } }
             ]
         };
     } else if (String(filterDomain).match(/^\d+$/)) { 
-        // 49 CFR Part Filter
+        // 49 CFR Part Filter (e.g., 213)
         domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
     } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
         // Operating Rule Filter
