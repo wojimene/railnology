@@ -23,8 +23,8 @@ const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOG
 const ENV = {
   // Production URL
   API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
-  // QA URL - Must be set in Vite config/environment file
-  QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://api.railnology.qa', 
+  // FIX: Updated QA API URL to use the new Vercel domain structure (railnologyqarail.dev)
+  QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://api.railnologyqarail.dev', 
   CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
   STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
   ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
@@ -40,7 +40,7 @@ const BRAND = {
 // Global list of authorized QA team emails (MUST match server.js list)
 const QA_TEAM_EMAILS = [
     ENV.ADMIN_EMAIL,
-    'tester@railnology.com' // QA Colleague's Placeholder Email
+    'tester@railnology.com' 
 ];
 
 // --- DEVICE ID UTILITY ---
@@ -1162,7 +1162,6 @@ const MainContent = () => {
              </div>
           )}
           
-          {/* Library View passes error handlers to Chat */}
           {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} apiUrl={apiUrl} />}
           
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} apiUrl={apiUrl} /></div>}
