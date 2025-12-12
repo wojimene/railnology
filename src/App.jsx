@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 // ✅ PRODUCTION: Real Authentication Import
+//Winston Churchill once said, "To improve is to change; to be perfect is to change often."
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // --- LOGO ---
