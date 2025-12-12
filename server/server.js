@@ -27,7 +27,7 @@ const NODE_ENV = process.env.NODE_ENV || 'production';
 const IS_QA_ENV = NODE_ENV === 'qa';
 // Database switching: Uses 'railnology_qa' database if NODE_ENV is set to 'qa'
 const DB_NAME = IS_QA_ENV ? "railnology_qa" : "railnology"; 
-const COLLECTION_KNOWLEDGE = "knowledge_chunks"; // FIX: Reverting to "knowledge_chunks" for consistency
+const COLLECTION_KNOWLEDGE = "knowledge_chunks"; // Correct collection name
 const VECTOR_INDEX_NAME = "default"; 
 
 // Global list of authorized QA team emails (Load from ENV in production)
@@ -49,7 +49,7 @@ let db;
 MongoClient.connect(MONGO_URI)
   .then(client => {
     db = client.db(DB_NAME);
-    // Confirmation message updated to show environment status
+    // FIX: Ensure the log shows the dynamically selected DB_NAME
     console.log(`✅ Connected to MongoDB Database: ${DB_NAME} (Environment: ${NODE_ENV.toUpperCase()})`);
     app.listen(PORT, () => console.log(`🚀 Railnology Server running on port ${PORT}`));
   })
@@ -117,7 +117,7 @@ api.post('/chat', async (req, res) => {
     console.log(`🔍 Raillie Processing: "${query}" (Domain: ${filterDomain || 'All'}) (User: ${user.email})`);
     
     const queryVector = await getEmbedding(query);
-    const collection = db.collection(COLLECTION_KNOWLEDGE); // Uses updated knowledge base collection name
+    const collection = db.collection(COLLECTION_KNOWLEDGE); 
     
     const pipeline = [];
     
@@ -153,32 +153,34 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        "numCandidates": 200, // INCREASED candidates for better initial retrieval
-        "limit": 8, // Increased initial limit
+        "numCandidates": 200, 
+        "limit": 8, 
         "filter": domainFilter // Apply the domain filter here
       }
     });
 
     // B. Post-Retrieval Keyword Filtering ($match - Hybrid Search Component)
-    // This step refines the vector results by ensuring keyword relevance, especially for rule numbers.
-    const keywords = query.split(/\s+/).filter(k => k.length > 2);
-    if (keywords.length > 0) {
-        // Build an OR query to match keywords in the text or section_id
-        const keywordQuery = keywords.map(keyword => ({
-            "$or": [
-                { "text": { "$regex": keyword, "$options": "i" } },
-                { "section_id": { "$regex": keyword, "$options": "i" } }
-            ]
-        }));
-        
-        // Match the documents retrieved by vector search against the keyword filter
-        pipeline.push({
-            "$match": { "$and": keywordQuery }
-        });
+    // FIX 6: If a filter is explicitly set, skip the expensive keyword match ($match) to prevent timeout.
+    // We only use Hybrid Search (Vector + Keyword) for the "All Docs" filter.
+    if (!filterDomain) {
+        const keywords = query.split(/\s+/).filter(k => k.length > 2);
+        if (keywords.length > 0) {
+            const keywordQuery = keywords.map(keyword => ({
+                "$or": [
+                    { "text": { "$regex": keyword, "$options": "i" } },
+                    { "section_id": { "$regex": keyword, "$options": "i" } }
+                ]
+            }));
+            
+            // Match the documents retrieved by vector search against the keyword filter
+            pipeline.push({
+                "$match": { "$and": keywordQuery }
+            });
+        }
     }
 
     // C. Re-limit and Project (Final Step)
-    pipeline.push({ "$limit": 3 }); // Take the top 3 results after filtering
+    pipeline.push({ "$limit": 3 }); // Take the top 3 results after filtering/reranking
 
     pipeline.push({
       "$project": {
@@ -187,7 +189,8 @@ api.post('/chat', async (req, res) => {
       }
     });
     
-    const results = await collection.aggregate(pipeline).toArray();
+    // FIX 7: Increase the max execution time for the aggregation command to resolve chronic timeouts on QA data set
+    const results = await collection.aggregate(pipeline, { maxTimeMS: 45000 }).toArray();
 
     // 5. GENERATE ANSWER
     let sources = [];
@@ -240,7 +243,7 @@ api.post('/chat', async (req, res) => {
 });
 
 // ==========================================
-// ⚙️ DIAGNOSTIC ENDPOINT (NEW)
+// ⚙️ DIAGNOSTIC ENDPOINT
 // ==========================================
 api.get('/diag/db', async (req, res) => {
     try {

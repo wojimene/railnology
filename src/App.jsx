@@ -21,10 +21,10 @@ const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOG
 // ==========================================
 
 const ENV = {
-  // Production URL
-  API_URL: import.meta.env.VITE_API_URL || 'https://api.railnology.com',
-  // FIX: Updated QA API URL to use the new Vercel domain structure (railnologyqarail.dev)
-  QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://api.railnologyqarail.dev', 
+  // Production URL (Render)
+  API_URL: import.meta.env.VITE_API_URL || 'https://railnology-api.onrender.com/api',
+  // FIX: Updated QA API URL default to use the new live Render QA address
+  QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://railnology-qa.onrender.com/api', 
   CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
   STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
   ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'wayne@railnology.com'
