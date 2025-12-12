@@ -231,8 +231,8 @@ api.post('/chat', async (req, res) => {
                 }
             });
 
-            // Use default timeout for faster, pure vector search
-            results = await collection.aggregate(fallbackPipeline).toArray();
+            // FIX 9: Add a maxTimeMS to the fallback query to prevent internal timeout cascade
+            results = await collection.aggregate(fallbackPipeline, { maxTimeMS: 20000 }).toArray();
 
         } catch (fallbackError) {
             console.error("❌ Fallback Query Failed:", fallbackError);
