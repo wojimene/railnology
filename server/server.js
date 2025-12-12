@@ -185,54 +185,54 @@ api.post('/chat', async (req, res) => {
 
     } catch (error) {
         // FIX 8: Fallback mechanism if the primary query (Hybrid/High-Timeout) fails.
-        console.warn("⚠️ Primary (Hybrid) Query Failed. Attempting Fallback (Pure Vector Search). Error:", error.message);
+        console.warn("⚠️ Primary (Hybrid) Query Failed. Attempting Fallback (Keyword Search). Error:", error.message);
         fallback_used = true;
 
         try {
-            const fallbackPipeline = [];
+            // FIX 10: Use a simple keyword regex search to guarantee a fast result, avoiding the slow vector engine entirely.
+            const keywords = query.split(/\s+/).filter(k => k.length > 2);
+            let fallbackQuery = {};
             
-            // The filter domain must be redefined for the fallback, but the logic remains the same.
-            let domainFilterFallback = {};
             if (filterDomain) {
-                 if (String(filterDomain).match(/^\d+$/)) { 
-                    domainFilterFallback = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
+                // If filtered, match keywords AND apply domain filter
+                const domainFilterFallback = {};
+                if (String(filterDomain).match(/^\d+$/)) { 
+                    domainFilterFallback.document_type = "Regulation";
+                    domainFilterFallback.part = Number(filterDomain);
                 } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
-                    domainFilterFallback = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
+                    domainFilterFallback.document_type = "Operating Rule";
+                    domainFilterFallback.rule_system = filterDomain;
                 } else if (filterDomain === "ADVISORY") {
-                    domainFilterFallback = { "document_type": "Safety Guidance", "source": "FRA" };
+                    domainFilterFallback.document_type = "Safety Guidance";
+                    domainFilterFallback.source = "FRA";
                 } else if (filterDomain === "CFR") {
-                    domainFilterFallback = { "document_type": "Regulation", "source": "FRA" };
+                    domainFilterFallback.document_type = "Regulation";
+                    domainFilterFallback.source = "FRA";
                 }
-            } else {
-                 domainFilterFallback = { 
-                    "$or": [
-                        { "document_type": { "$eq": "Regulation" } },
-                        { "document_type": { "$eq": "Operating Rule" } },
-                        { "document_type": { "$eq": "Safety Guidance" } }
+                
+                if (keywords.length > 0) {
+                    fallbackQuery = { 
+                        ...domainFilterFallback,
+                        "$or": keywords.map(keyword => ({ "text": { "$regex": keyword, "$options": "i" } })) 
+                    };
+                } else {
+                    fallbackQuery = domainFilterFallback;
+                }
+            } else if (keywords.length > 0) {
+                // If not filtered, match keywords against all Operating Rules and Regulations (to avoid searching all 7k docs)
+                 fallbackQuery = { 
+                    "$and": [
+                        { "$or": [{ "document_type": "Regulation" }, { "document_type": "Operating Rule" }] },
+                        { "$or": keywords.map(keyword => ({ "text": { "$regex": keyword, "$options": "i" } })) }
                     ]
                 };
             }
             
-            fallbackPipeline.push({
-              "$vectorSearch": {
-                "index": VECTOR_INDEX_NAME,
-                "path": "embedding",
-                "queryVector": queryVector,
-                "numCandidates": 100, // Reduced candidates for speed
-                "limit": 3, 
-                "filter": domainFilterFallback
-              }
-            });
-
-            fallbackPipeline.push({
-                "$project": {
-                    "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "document_type": 1, "rule_system": 1, "doc_type": 1,
-                    "score": { "$meta": "vectorSearchScore" }
-                }
-            });
-
-            // FIX 9: Add a maxTimeMS to the fallback query to prevent internal timeout cascade
-            results = await collection.aggregate(fallbackPipeline, { maxTimeMS: 20000 }).toArray();
+            // Execute simple find operation (fast, non-vector search)
+            results = await collection.find(fallbackQuery)
+                                      .project({ _id: 0, part: 1, section_id: 1, text: 1, title: 1, document_type: 1, rule_system: 1, doc_type: 1 })
+                                      .limit(3)
+                                      .toArray();
 
         } catch (fallbackError) {
             console.error("❌ Fallback Query Failed:", fallbackError);
@@ -262,7 +262,7 @@ api.post('/chat', async (req, res) => {
         : "No specific regulations or rules found in the selected domain. Please try selecting a more focused domain filter.";
 
     if (fallback_used) {
-        contextText = "⚠️ Search performance degraded. Using basic vector search results:\n\n" + contextText;
+        contextText = "⚠️ Search performance degraded. Using basic keyword search results:\n\n" + contextText;
     }
     
     // Updated prompt with Raillie name
