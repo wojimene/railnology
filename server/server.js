@@ -119,80 +119,128 @@ api.post('/chat', async (req, res) => {
     const queryVector = await getEmbedding(query);
     const collection = db.collection(COLLECTION_KNOWLEDGE); 
     
-    const pipeline = [];
-    
-    // Dynamic Filter Logic (for vectorSearch.filter and $match)
-    let domainFilter = {};
-    
-    // Default "All Docs" scope: Target ALL document types.
-    if (!filterDomain) {
-        domainFilter = { 
-            "$or": [
-                { "document_type": { "$eq": "Regulation" } },
-                { "document_type": { "$eq": "Operating Rule" } },
-                { "document_type": { "$eq": "Safety Guidance" } }
-            ]
-        };
-    } else if (String(filterDomain).match(/^\d+$/)) { 
-        // 49 CFR Part Filter (e.g., 213)
-        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
-    } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
-        // Operating Rule Filter
-        domainFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
-    } else if (filterDomain === "ADVISORY") {
-        // FRA Guidance Filter
-        domainFilter = { "document_type": "Safety Guidance", "source": "FRA" };
-    } else if (filterDomain === "CFR") {
-        // If they explicitly filter to ALL CFR, search all regulations
-        domainFilter = { "document_type": "Regulation", "source": "FRA" };
-    }
-    
-    // A. Vector Search Step (Semantic Search)
-    pipeline.push({
-      "$vectorSearch": {
-        "index": VECTOR_INDEX_NAME,
-        "path": "embedding",
-        "queryVector": queryVector,
-        "numCandidates": 200, 
-        "limit": 8, 
-        "filter": domainFilter // Apply the domain filter here
-      }
-    });
+    let results = [];
+    let fallback_used = false;
 
-    // B. Post-Retrieval Keyword Filtering ($match - Hybrid Search Component)
-    // FIX 6: If a filter is explicitly set, skip the expensive keyword match ($match) to prevent timeout.
-    // We only use Hybrid Search (Vector + Keyword) for the "All Docs" filter.
-    if (!filterDomain) {
-        const keywords = query.split(/\s+/).filter(k => k.length > 2);
-        if (keywords.length > 0) {
-            const keywordQuery = keywords.map(keyword => ({
+    // --- Primary (Hybrid) Pipeline ---
+    try {
+        const primaryPipeline = [];
+        let domainFilter = {};
+
+        // Dynamic Filter Logic (for vectorSearch.filter)
+        if (!filterDomain) {
+            domainFilter = { 
                 "$or": [
-                    { "text": { "$regex": keyword, "$options": "i" } },
-                    { "section_id": { "$regex": keyword, "$options": "i" } }
+                    { "document_type": { "$eq": "Regulation" } },
+                    { "document_type": { "$eq": "Operating Rule" } },
+                    { "document_type": { "$eq": "Safety Guidance" } }
                 ]
-            }));
+            };
+        } else if (String(filterDomain).match(/^\d+$/)) { 
+            domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
+        } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
+            domainFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
+        } else if (filterDomain === "ADVISORY") {
+            domainFilter = { "document_type": "Safety Guidance", "source": "FRA" };
+        } else if (filterDomain === "CFR") {
+            domainFilter = { "document_type": "Regulation", "source": "FRA" };
+        }
+        
+        primaryPipeline.push({
+          "$vectorSearch": {
+            "index": VECTOR_INDEX_NAME,
+            "path": "embedding",
+            "queryVector": queryVector,
+            "numCandidates": 200, 
+            "limit": 8, 
+            "filter": domainFilter
+          }
+        });
+
+        // FIX 6: Only use Hybrid Search ($match) for the default 'All Docs' filter.
+        if (!filterDomain) {
+            const keywords = query.split(/\s+/).filter(k => k.length > 2);
+            if (keywords.length > 0) {
+                const keywordQuery = keywords.map(keyword => ({
+                    "$or": [
+                        { "text": { "$regex": keyword, "$options": "i" } },
+                        { "section_id": { "$regex": keyword, "$options": "i" } }
+                    ]
+                }));
+                primaryPipeline.push({ "$match": { "$and": keywordQuery } });
+            }
+        }
+        
+        primaryPipeline.push({ "$limit": 3 });
+
+        primaryPipeline.push({
+          "$project": {
+            "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "document_type": 1, "rule_system": 1, "doc_type": 1,
+            "score": { "$meta": "vectorSearchScore" }
+          }
+        });
+        
+        // FIX 7: Aggregation attempt with high timeout (45 seconds)
+        results = await collection.aggregate(primaryPipeline, { maxTimeMS: 45000 }).toArray();
+
+    } catch (error) {
+        // FIX 8: Fallback mechanism if the primary query (Hybrid/High-Timeout) fails.
+        console.warn("⚠️ Primary (Hybrid) Query Failed. Attempting Fallback (Pure Vector Search). Error:", error.message);
+        fallback_used = true;
+
+        try {
+            const fallbackPipeline = [];
             
-            // Match the documents retrieved by vector search against the keyword filter
-            pipeline.push({
-                "$match": { "$and": keywordQuery }
+            // The filter domain must be redefined for the fallback, but the logic remains the same.
+            let domainFilterFallback = {};
+            if (filterDomain) {
+                 if (String(filterDomain).match(/^\d+$/)) { 
+                    domainFilterFallback = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
+                } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
+                    domainFilterFallback = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
+                } else if (filterDomain === "ADVISORY") {
+                    domainFilterFallback = { "document_type": "Safety Guidance", "source": "FRA" };
+                } else if (filterDomain === "CFR") {
+                    domainFilterFallback = { "document_type": "Regulation", "source": "FRA" };
+                }
+            } else {
+                 domainFilterFallback = { 
+                    "$or": [
+                        { "document_type": { "$eq": "Regulation" } },
+                        { "document_type": { "$eq": "Operating Rule" } },
+                        { "document_type": { "$eq": "Safety Guidance" } }
+                    ]
+                };
+            }
+            
+            fallbackPipeline.push({
+              "$vectorSearch": {
+                "index": VECTOR_INDEX_NAME,
+                "path": "embedding",
+                "queryVector": queryVector,
+                "numCandidates": 100, // Reduced candidates for speed
+                "limit": 3, 
+                "filter": domainFilterFallback
+              }
             });
+
+            fallbackPipeline.push({
+                "$project": {
+                    "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "document_type": 1, "rule_system": 1, "doc_type": 1,
+                    "score": { "$meta": "vectorSearchScore" }
+                }
+            });
+
+            // Use default timeout for faster, pure vector search
+            results = await collection.aggregate(fallbackPipeline).toArray();
+
+        } catch (fallbackError) {
+            console.error("❌ Fallback Query Failed:", fallbackError);
+            throw new Error("Internal Server Error: Database Retrieval Failed");
         }
     }
-
-    // C. Re-limit and Project (Final Step)
-    pipeline.push({ "$limit": 3 }); // Take the top 3 results after filtering/reranking
-
-    pipeline.push({
-      "$project": {
-        "_id": 0, "part": 1, "section_id": 1, "text": 1, "title": 1, "document_type": 1, "rule_system": 1, "doc_type": 1,
-        "score": { "$meta": "vectorSearchScore" }
-      }
-    });
     
-    // FIX 7: Increase the max execution time for the aggregation command to resolve chronic timeouts on QA data set
-    const results = await collection.aggregate(pipeline, { maxTimeMS: 45000 }).toArray();
-
-    // 5. GENERATE ANSWER
+    // --- 5. GENERATE ANSWER ---
     let sources = [];
     let contextText = results.length > 0 
         ? results.map(doc => {
@@ -212,6 +260,10 @@ api.post('/chat', async (req, res) => {
             return `[Source: ${sourceId}]\n${doc.text}`;
         }).join("\n\n")
         : "No specific regulations or rules found in the selected domain. Please try selecting a more focused domain filter.";
+
+    if (fallback_used) {
+        contextText = "⚠️ Search performance degraded. Using basic vector search results:\n\n" + contextText;
+    }
     
     // Updated prompt with Raillie name
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
