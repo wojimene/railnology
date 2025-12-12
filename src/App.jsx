@@ -23,7 +23,7 @@ const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOG
 const ENV = {
   // Production URL (Render)
   API_URL: import.meta.env.VITE_API_URL || 'https://railnology-api.onrender.com/api',
-  // FIX: Updated QA API URL default to use the new live Render QA address
+  // QA API URL default to use the live Render QA address
   QA_API_URL: import.meta.env.VITE_QA_ENV_URL || 'https://railnology-qa.onrender.com/api', 
   CLERK_KEY: import.meta.env.VITE_CLERK_KEY,
   STRIPE_LINK: import.meta.env.VITE_STRIPE_PAYMENT_LINK,
@@ -105,8 +105,9 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
           <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase mt-0.5">
             Platform 
             {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
-            {/* QA Badge Logic: Red if actively using QA URL, Amber if QA user on Prod URL */}
-            {isQA && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow ${currentApiUrl === ENV.QA_API_URL ? 'bg-red-600' : 'bg-amber-500'}`}>QA</span>}
+            {/* FIX: QA Badge Logic simplified. Only show if the API URL is explicitly QA. 
+               This ignores the QA email check if the URL is Prod (railnology.com) */}
+            {currentApiUrl === ENV.QA_API_URL && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow bg-red-600`}>QA</span>}
           </p>
         </div>
       </button>
@@ -568,7 +569,7 @@ const CurveResistanceCalculator = ({ isPro }) => {
           <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
         </div>
 
-        {/* Visualization */}
+        /* Visualization */
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden">
            <div className="flex justify-between items-end mb-1">
              <span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span>
@@ -1138,18 +1139,18 @@ const MainContent = () => {
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      {/* Main mobile container now handles the fixed position and width constraints. */}
+      /* Main mobile container now handles the fixed position and width constraints. */
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         
-        {/* Header content */}
+        /* Header content */
         <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
           <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} isQA={isQAUser} currentApiUrl={apiUrl} />
         </div>
         
-        {/* Main View Area - Handles Scrolling Logic */}
+        /* Main View Area - Handles Scrolling Logic */
         <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
           
-          {/* All views inside this scroll container are now scrollable within the fixed bounds */}
+          /* All views inside this scroll container are now scrollable within the fixed bounds */
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} apiUrl={apiUrl} />}
@@ -1167,14 +1168,14 @@ const MainContent = () => {
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} apiUrl={apiUrl} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} apiUrl={apiUrl} /></div>}
           
-          {/* RESTORED TOOLS VIEW */}
+          /* RESTORED TOOLS VIEW */
           {activeTab === 'tools' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
              </div>
           )}
           
-          {/* RailOps View */}
+          /* RailOps View */
           {activeTab === 'company' && mongoUser?.role === 'company' && (
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               <RailOpsView />
@@ -1182,7 +1183,7 @@ const MainContent = () => {
           )}
         </div>
 
-        {/* Bottom Navigation content - Now fixed and scoped to the max-width */}
+        /* Bottom Navigation content - Now fixed and scoped to the max-width */
         <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 z-50 max-w-[480px] mx-auto w-full">
             <div className="flex justify-between items-center h-full">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
