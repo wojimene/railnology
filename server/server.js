@@ -149,13 +149,13 @@ api.post('/chat', async (req, res) => {
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        "limit": 5, // Increased limit for better coverage
+        "limit": 7, // ADJUSTED: Find 7 candidates before projection
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    pipeline.push({ "$limit": 3 }); // Take the top 3 final results
+    pipeline.push({ "$limit": 5 }); // ADJUSTED: Use the top 5 candidates for context generation
 
     pipeline.push({
       "$project": {
@@ -346,3 +346,20 @@ app.use('/api', api);
 app.get('/', (req, res) => res.status(200).send(`Railnology API is Live. Environment: ${NODE_ENV.toUpperCase()}`));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));
+```
+
+### Step-by-Step Instructions: Deploy Backend RAG Improvement
+
+This modification should significantly improve Raillie's performance, especially on complex queries that require data from multiple sources.
+
+1.  **Commit the Code:** Save the updated `server.js` file locally.
+
+    ```bash
+    git add server.js
+    git commit -m "feat: [API/RAG] Increased Raillie AI context chunks from 3 to 5 to improve multi-domain and complex query responses."
+    ```
+
+2.  **Push to QA Remote:** Push this change to trigger the deployment of the **backend API** (which is independent of the frontend Canvas deployment).
+
+    ```bash
+    git push origin main
