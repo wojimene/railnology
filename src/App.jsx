@@ -366,7 +366,7 @@ const RailOpsView = () => {
             {/* INSPECTION FORM OVERLAY */}
             {showInspection && <TrackInspectionForm onClose={() => setShowInspection(false)} />}
 
-            /* SUB-NAVIGATION */
+            {/* SUB-NAVIGATION */}
             <div className="px-4 mb-4 flex-shrink-0">
                 <div className="bg-gray-100 p-1 rounded-xl flex">
                     {['Dispatch', 'Inspections', 'Reports'].map((tab) => (
@@ -385,9 +385,9 @@ const RailOpsView = () => {
                 </div>
             </div>
 
-            /* CONTENT AREA */
+            {/* CONTENT AREA */}
             <div className="flex-1 overflow-y-auto px-4 scrollbar-thin">
-                /* 1. DISPATCH TAB */
+                {/* 1. DISPATCH TAB */}
                 {subTab === 'dispatch' && (
                     <div className="space-y-4">
                         <div className="bg-[#4A4A4A] rounded-xl p-5 text-white shadow-lg">
@@ -450,7 +450,7 @@ const RailOpsView = () => {
                     </div>
                 )}
 
-                /* 2. INSPECTIONS TAB (COMPLIANCE) */
+                {/* 2. INSPECTIONS TAB (COMPLIANCE) */}
                 {subTab === 'inspections' && (
                     <div className="space-y-4">
                         <div className="bg-white p-6 rounded-xl border border-gray-200 text-center shadow-sm">
@@ -484,7 +484,7 @@ const RailOpsView = () => {
                     </div>
                 )}
 
-                /* 3. REPORTS TAB */
+                {/* 3. REPORTS TAB */}
                 {subTab === 'reports' && (
                     <div className="space-y-4">
                          <div className="grid grid-cols-2 gap-4">
@@ -503,7 +503,7 @@ const RailOpsView = () => {
                 )}
             </div>
 
-            /* CREW SELECTION MODAL */
+            {/* CREW SELECTION MODAL */}
             {selectedSchedule && (
                 <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
                     <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-10">
@@ -582,7 +582,7 @@ const CurveResistanceCalculator = ({ isPro }) => {
           <div className="text-right text-xs font-bold text-[#4A4A4A]">{degree}°</div>
         </div>
 
-        /* Visualization */
+        {/* Visualization */}
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 relative overflow-hidden">
            <div className="flex justify-between items-end mb-1">
              <span className="text-xs font-bold text-gray-500 uppercase">Resistance Force</span>
@@ -799,7 +799,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
       ]);
 
     } catch (e) {
-      console.error(e);
+      console.error("AIChat Fetch Error:", e);
       setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting to the knowledge base." }]);
     } finally {
       setLoading(false);
@@ -983,7 +983,7 @@ const LibraryView = ({ onPaywall, onConflict, apiUrl }) => {
                 </div>
             </div>
 
-            /* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */
+            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
             <div className="flex-1 min-h-0 relative border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
                 <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} apiUrl={apiUrl} />
             </div>
