@@ -209,9 +209,9 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        "numCandidates": 100, 
-        // RAG Baseline: Finding 5 candidates before projection for stability
-        "limit": 5, 
+        // Drastically reduced candidate pool and limit for stability and to prevent 504 timeout
+        "numCandidates": 10, 
+        "limit": 3, 
         // FIX: The $filter stage is REMOVED entirely here to prevent the index crash.
         // The search now covers all documents in the knowledge base index.
       }
@@ -416,20 +416,3 @@ app.use('/api', api);
 app.get('/', (req, res) => res.status(200).send(`Railnology API is Live. Environment: ${NODE_ENV.toUpperCase()}`));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));
-```
-
-### Deployment Instructions: Backend
-
-Please follow the deployment steps below immediately. This fix isolates the vector search index from the unindexed path, which *must* solve the 500 crash.
-
-1.  **Commit the Code:** Save the updated `server.js` file locally.
-
-    ```bash
-    git add server.js
-    git commit -m "fix: [API/CRITICAL] Removed unindexed 'document_type' filter from vectorSearch pipeline to eliminate MongoDB 500 crash."
-    ```
-
-2.  **Push Backend to QA Remote:**
-
-    ```bash
-    git push origin main
