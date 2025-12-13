@@ -149,13 +149,15 @@ api.post('/chat', async (req, res) => {
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        "limit": 10, // ADJUSTED: Find 10 candidates before projection for better coverage
+        // CLEANED: Use 10 as the number of candidates to find before projection
+        "limit": 10, 
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    pipeline.push({ "$limit": 7 }); // ADJUSTED: Use the top 7 candidates for context generation
+    // CLEANED: Use 7 as the final number of context chunks passed to the LLM
+    pipeline.push({ "$limit": 7 }); 
 
     pipeline.push({
       "$project": {
@@ -354,7 +356,7 @@ app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));
 
     ```bash
     git add server.js
-    git commit -m "feat: [API/RAG] Maximize Raillie AI context chunks (from 5 to 7) to improve complex, cross-domain query handling."
+    git commit -m "fix: [API/RAG] Maximize Raillie AI context chunks (from 5 to 7) to improve complex, cross-domain query handling."
     ```
 
 2.  **Push to QA Remote:** Push this change to deploy the upgraded backend API.
