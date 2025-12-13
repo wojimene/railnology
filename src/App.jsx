@@ -615,15 +615,17 @@ const ToolsView = ({ signalAspects, isPro, onUnlock }) => (
     </div>
 );
 
-// --- DAILY CONCEPT CARD ---
+// --- DAILY CONCEPT CARD (UPDATED WITH ORANGE GRADIENT) ---
 const SafetyMinuteCard = () => (
-  <div className="bg-gradient-to-br from-[#4A4A4A] to-gray-700 rounded-2xl p-5 text-white shadow-lg mb-6 relative overflow-hidden group">
+  // NEW GRADIENT: from Dark Gray (#4A4A4A) to Orange (#FA5B0F), with Secondary Orange border
+  <div className="bg-gradient-to-r from-[#4A4A4A] to-[#FA5B0F] rounded-2xl p-5 text-white shadow-lg mb-6 relative overflow-hidden group border-2 border-[#FA5B0F]">
     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
       <Radio className="w-24 h-24" />
     </div>
     <div className="relative z-10">
       <div className="flex items-center mb-3">
-        <span className="bg-white/20 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm flex items-center">
+        {/* Accent color background for the tag */}
+        <span className="bg-[#4A4A4A]/20 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm flex items-center">
           <Play className="w-3 h-3 mr-1 fill-current" /> Daily Insight
         </span>
         <span className="ml-auto text-[10px] opacity-70">Dec 07</span>
@@ -631,6 +633,7 @@ const SafetyMinuteCard = () => (
       <h3 className="text-lg font-bold mb-1">Broken Rail Identification</h3>
       <p className="text-gray-200 text-xs mb-4 max-w-[85%]">Visual cues for detecting transverse fissures before they become service failures.</p>
       
+      {/* CTA Button: High contrast white/dark gray */}
       <button className="bg-white text-[#4A4A4A] px-4 py-2 rounded-full text-xs font-bold flex items-center hover:bg-gray-50 transition active:scale-95 shadow-md">
         Watch Video (3m)
       </button>
@@ -1165,7 +1168,7 @@ const MainContent = () => {
             font-family: 'Poppins', sans-serif;
             font-weight: 600; 
         }
-        
+
         /* Logo Elongation CSS (2.0x horizontal stretch) */
         .stretched-vowel {
             display: inline-block;
@@ -1190,7 +1193,7 @@ const MainContent = () => {
       <div className="w-full max-w-[480px] h-screen bg-white shadow-2xl relative flex flex-col border-x border-gray-200">
         
         <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
-          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} isQA={isQaHost} currentApiUrl={apiUrl} />
+          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isQaHost} currentApiUrl={apiUrl} />
         </div>
         
         <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
