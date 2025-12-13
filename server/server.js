@@ -190,7 +190,7 @@ api.post('/chat', async (req, res) => {
     const pipeline = [];
     let domainFilter = {};
 
-    // Dynamic Filter Logic (for vectorSearch.filter) - STILL NEEDED FOR SOURCE MAPPING, BUT NOT FOR FILTERING IN THE PIPELINE
+    // Determine the required filter logic for the $match stage (post vector search)
     if (filterDomain) {
         if (String(filterDomain).match(/^\d+$/)) { 
             // CFR PART filter (e.g., filterDomain = "213")
@@ -210,16 +210,21 @@ api.post('/chat', async (req, res) => {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
-        // Drastically reduced candidate pool and limit for stability and to prevent 504 timeout
+        // Reduced pool for speed and stability
         "numCandidates": 10, 
-        "limit": 3, 
-        // FIX: The $filter stage is REMOVED entirely here to prevent the index crash.
-        // The search now covers all documents in the knowledge base index.
+        "limit": 5, // Find 5 candidates based on vector search
+        // NOTE: The $filter stage is REMOVED to avoid the index crash.
       }
     });
     
-    // B. Final Projection
-    // RAG Baseline: Using standard 3 chunks for context for maximum reliability
+    // B. Filtering Stage (REINTRODUCED AS $MATCH)
+    // Only apply the match filter if a specific domain was requested.
+    if (Object.keys(domainFilter).length > 0) {
+        pipeline.push({ "$match": domainFilter });
+    }
+
+    // C. Final Projection
+    // Final limit after matching (ensures we only pass 3 relevant chunks to the LLM)
     pipeline.push({ "$limit": 3 }); 
 
     pipeline.push({
