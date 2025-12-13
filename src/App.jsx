@@ -102,15 +102,17 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
         >
           {/* PLATFORM ICON (Primary Icon) */}
           <div className="flex items-center justify-center">
-             <div className="p-1 rounded-md flex items-center justify-center" style={{height: '1.5rem', width: '1.5rem'}}>
-                {/* Icon size adjusted for horizontal lockup (approx. cap height) */}
-                <Train className="w-5 h-5 text-[#FA5B0F] fill-transparent" />
+             {/* Icon size adjusted to match wordmark height (approx 1.2em) */}
+             <div className="p-1 flex items-center justify-center" style={{height: '1.2em', width: '1.2em'}}>
+                {/* Icon size adjusted to cover 100% of the wordmark height */}
+                <Train className="w-full h-full text-[#FA5B0F] fill-transparent" />
              </div>
           </div>
           
           {/* WORDMARK: Poppins Semibold with custom styling */}
-          <div className="text-left font-poppins-semibold pl-1" style={{letterSpacing: '-1.5px'}}>
-            <h1 className="text-lg tracking-tight leading-none text-white font-semibold" style={{fontSize: '1.1em'}}>
+          {/* Adjusted spacing to 0.75 * X (visually implemented by pl-1) and applied new tracking CSS */}
+          <div className="text-left font-poppins-semibold pl-1">
+            <h1 className="text-lg tracking-tight leading-none text-white font-semibold" style={{fontSize: '1.1em', letterSpacing: '-1.8px'}}>
                 Railnol<span className="stretched-vowel">o</span>gy
             </h1>
             <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
@@ -1170,6 +1172,11 @@ const MainContent = () => {
             display: inline-block;
             transform: scaleX(1.75); 
             margin: 0 1px; /* Slight adjustment for visual spacing */
+        }
+
+        /* NEW TRACKING ADJUSTMENT (Increased tracking by approx 20% from old -1.5px) */
+        .header-wordmark {
+            letter-spacing: -1.8px;
         }
       `}</style>
 
