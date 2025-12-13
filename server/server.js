@@ -148,15 +148,15 @@ api.post('/chat', async (req, res) => {
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        // FINAL RAG SETTING: Find 10 candidates before projection
-        "limit": 10, 
+        // REVERTED: Finding a smaller, more focused candidate pool for stability
+        "limit": 5, 
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    // FINAL RAG SETTING: Use the top 7 chunks for context generation
-    pipeline.push({ "$limit": 7 }); 
+    // REVERTED: Using standard 3 chunks for context for maximum reliability
+    pipeline.push({ "$limit": 3 }); 
 
     pipeline.push({
       "$project": {
