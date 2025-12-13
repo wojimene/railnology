@@ -90,44 +90,47 @@ const TabButton = ({ active, id, icon: Icon, label, onClick }) => (
 );
 
 // --- HEADER UPDATED FOR QA BADGE ---
-const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeClick }) => (
-  <div className={`${BRAND.color} text-white p-4 h-16 sticky top-0 z-50 shadow-md flex-shrink-0`}>
-    <div className="flex justify-between items-center h-full">
-      <button 
-        onClick={onHomeClick} 
-        className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
-      >
-        <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
-          <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
+const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeClick }) => {
+  const isQaEnvironmentActive = currentApiUrl === ENV.QA_API_URL;
+  
+  return (
+    <div className={`${BRAND.color} text-white p-4 h-16 sticky top-0 z-50 shadow-md flex-shrink-0`}>
+      <div className="flex justify-between items-center h-full">
+        <button 
+          onClick={onHomeClick} 
+          className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
+        >
+          <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
+            <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
+          </div>
+          <div className="text-left">
+            <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
+            <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase mt-0.5">
+              Platform 
+              {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
+              {/* FIX 1: Only show QA badge if the URL specifically targets the QA API. */}
+              {isQaEnvironmentActive && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow bg-red-600`}>QA</span>}
+            </p>
+          </div>
+        </button>
+        <div className="flex items-center space-x-3">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 hover:bg-slate-700 transition font-bold">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+             <button onClick={onProfileClick} className="opacity-90 hover:opacity-100 transition">
+               <UserButton afterSignOutUrl="/"/>
+             </button>
+          </SignedIn>
         </div>
-        <div className="text-left">
-          <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
-          <p className="text-[9px] text-slate-400 tracking-widest font-medium uppercase mt-0.5">
-            Platform 
-            {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
-            {/* FIX: QA Badge Logic simplified. Only show if the API URL is explicitly QA. 
-               This ignores the QA email check if the URL is Prod (railnology.com) */}
-            {currentApiUrl === ENV.QA_API_URL && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow bg-red-600`}>QA</span>}
-          </p>
-        </div>
-      </button>
-      <div className="flex items-center space-x-3">
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className="text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 hover:bg-slate-700 transition font-bold">
-              Sign In
-            </button>
-          </SignInButton>
-        </SignedOut>
-        <SignedIn>
-           <button onClick={onProfileClick} className="opacity-90 hover:opacity-100 transition">
-             <UserButton afterSignOutUrl="/"/>
-           </button>
-        </SignedIn>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const SectionTitle = ({ title, subtitle, action }) => (
   <div className="mb-4 mt-2 flex justify-between items-end">
@@ -929,8 +932,13 @@ const JobDetailView = ({ job, onBack }) => (
 const HomeView = ({ changeTab, jobs, onJobClick, apiUrl }) => (
     <div className="pb-24">
         <div className="px-4 mt-6">
-            {/* Show current API URL in Admin/QA view */}
-            {apiUrl === ENV.QA_API_URL && <div className="text-center text-red-600 text-xs font-bold mb-3 p-2 bg-red-50 rounded-lg border border-red-200">QA ENVIRONMENT ACTIVE</div>}
+            {/* FIX 2: Explicitly display the environment status based on the selected API URL */}
+            <div className={`text-center text-xs font-bold mb-3 p-2 rounded-lg border 
+                ${apiUrl === ENV.API_URL ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-red-50 text-red-600 border-red-200'}`}
+            >
+                ENVIRONMENT: {apiUrl === ENV.API_URL ? 'PRODUCTION' : 'QA'} (API: {apiUrl})
+            </div>
+            
             <SafetyMinuteCard />
             
             <SectionTitle title="Recent Jobs" action={
@@ -1067,10 +1075,13 @@ const MainContent = () => {
   const { user, isSignedIn } = useUser();
 
   // --- QA/PROD API URL DETERMINATION ---
-  // If the URL contains 'qa' OR the user is a QA team member, use the QA API URL
+  // FIX: Simplified API URL determination to prioritize host name check for clarity
+  const isQaHost = window.location.hostname.includes('qa');
   const isQAUser = isSignedIn && QA_TEAM_EMAILS.includes(user.primaryEmailAddress?.emailAddress);
-  const useQABase = window.location.hostname.includes('qa') || isQAUser;
-  const apiUrl = useQABase ? ENV.QA_API_URL : ENV.API_URL;
+  
+  // If the host URL contains 'qa', use the QA API URL; otherwise use the Production API URL.
+  // This explicitly links the frontend API environment to the deployed host.
+  const apiUrl = isQaHost ? ENV.QA_API_URL : ENV.API_URL;
   // ------------------------------------
 
 
