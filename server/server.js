@@ -149,13 +149,13 @@ api.post('/chat', async (req, res) => {
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        "limit": 7, // ADJUSTED: Find 7 candidates before projection
+        "limit": 10, // ADJUSTED: Find 10 candidates before projection for better coverage
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    pipeline.push({ "$limit": 5 }); // ADJUSTED: Use the top 5 candidates for context generation
+    pipeline.push({ "$limit": 7 }); // ADJUSTED: Use the top 7 candidates for context generation
 
     pipeline.push({
       "$project": {
@@ -346,3 +346,18 @@ app.use('/api', api);
 app.get('/', (req, res) => res.status(200).send(`Railnology API is Live. Environment: ${NODE_ENV.toUpperCase()}`));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));
+```
+
+### Next Steps: Deploy Backend Fix
+
+1.  **Commit the Code:** Save the updated `server.js` file locally.
+
+    ```bash
+    git add server.js
+    git commit -m "feat: [API/RAG] Maximize Raillie AI context chunks (from 5 to 7) to improve complex, cross-domain query handling."
+    ```
+
+2.  **Push to QA Remote:** Push this change to deploy the upgraded backend API.
+
+    ```bash
+    git push origin main
