@@ -1166,11 +1166,11 @@ const MainContent = () => {
             font-weight: 600; 
         }
 
-        /* Logo Elongation CSS (1.75x horizontal stretch on the second 'o') */
+        /* Logo Elongation CSS (2.0x horizontal stretch on the second 'o') */
         .stretched-vowel {
             display: inline-block;
-            transform: scaleX(1.75); 
-            margin: 0 3px; /* ADJUSTED: Increased space around 'o' to 3px */
+            transform: scaleX(2.0); 
+            margin: 0 6px; /* ADJUSTED: Increased space around 'o' to 6px (2x previous 3px) */
         }
 
         /* NEW TRACKING ADJUSTMENT (Increased tracking from -1.8px to 0.5px) */
