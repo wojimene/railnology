@@ -728,4 +728,487 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
           setMessages(prev => [...prev, { role: 'ai', text: "⚠️ Session paused due to activity on another device." }]);
           return;
       }
-      if (!res.ok) throw new Error('API Error
+      if (!res.ok) throw new Error('API Error');
+      
+      const data = await res.json();
+      
+      setMessages(prev => [
+        ...prev, 
+        { 
+          role: 'ai', 
+          text: data.answer,
+          sources: data.sources 
+        }
+      ]);
+
+    } catch (e) {
+      console.error(e);
+      setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting to the knowledge base." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={`flex flex-col bg-white overflow-hidden relative ${className || 'h-[60vh]'}`}>
+       {/* Context Badge */}
+       {contextFilter && (
+         <div className="absolute top-14 left-0 right-0 flex justify-center pointer-events-none z-10">
+            <span className="bg-slate-900/5 backdrop-blur-md text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold border border-slate-200 shadow-sm flex items-center">
+              <Filter className="w-3 h-3 mr-1" /> Filtering: {contextFilter.name}
+            </span>
+         </div>
+       )}
+
+       <div className="bg-slate-50/80 backdrop-blur p-4 border-b border-slate-200 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 text-indigo-600 shadow-sm">
+                <Bot className="w-5 h-5" />
+            </div>
+            <div>
+                <h3 className="text-sm font-bold text-slate-800">Raillie AI</h3>
+                <p className="text-[10px] text-slate-500">{contextFilter ? 'Focused Search' : 'Full Compliance Mode'}</p>
+            </div>
+          </div>
+       </div>
+
+       {/* Chat Area - Full Width */}
+       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-5 scroll-smooth scrollbar-thin">
+         {messages.map((m, i) => (
+           <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
+              <div className={`text-sm leading-relaxed ${
+                  m.role === 'user' 
+                  ? 'max-w-[85%] p-3.5 rounded-2xl bg-slate-900 text-white rounded-br-none shadow-sm' 
+                  : 'w-full text-slate-800 pl-1' 
+              }`}>
+                 <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
+              
+              {/* SOURCE PILLS - UPDATED LOGIC */}
+              {m.sources && m.sources.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
+                  {m.sources.map((source, idx) => {
+                    const type = source.sourceType;
+                    const isRegulation = type === "Regulation";
+                    const isOperatingRule = type === "Operating Rule";
+                    const isGuidance = type === "Safety Guidance";
+                    
+                    const sourceLabel = source.sourceId; 
+                        
+                    // Define color classes based on the new document types
+                    const colorClass = isRegulation ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                       isOperatingRule ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                                       isGuidance ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                       "bg-blue-50 text-blue-700 border-blue-200";
+
+                    return (
+                      <a 
+                        key={idx}
+                        href="#" 
+                        className={`flex items-center text-[10px] px-2 py-1 rounded-full border transition hover:opacity-80 ${colorClass}`}
+                      >
+                        {isRegulation && <Shield className="w-3 h-3 mr-1" />}
+                        {isOperatingRule && <ScrollText className="w-3 h-3 mr-1" />}
+                        {isGuidance && <AlertCircle className="w-3 h-3 mr-1" />}
+                        {sourceLabel}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+           </div>
+         ))}
+         {loading && (
+           <div className="flex items-center text-xs text-slate-400 mt-2 pl-1 animate-pulse">
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full mr-1 animate-bounce delay-75"></div>
+             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150"></div>
+           </div>
+         )}
+       </div>
+
+       <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
+         <div className="flex gap-2 items-center bg-slate-50 p-1.5 rounded-full border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
+            <input 
+              ref={inputRef} 
+              className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-700 placeholder-slate-400"
+              placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Raillie..."}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            <button 
+                onClick={handleSend} 
+                disabled={loading} 
+                className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 transition-transform active:scale-90"
+            >
+                <ArrowRight className="w-4 h-4" />
+            </button>
+         </div>
+       </div>
+    </div>
+  );
+};
+
+// --- LIBRARY VIEW (SPLIT SCREEN LAYOUT) ---
+const LibraryView = ({ onPaywall, onConflict, apiUrl }) => {
+    const [selectedContext, setSelectedContext] = useState(null);
+
+    const manuals = [
+        { id: 'gcor', name: 'GCOR Rules', icon: ScrollText, color: 'bg-indigo-600', domainId: 'GCOR' },
+        { id: 'norac', name: 'NORAC Rules', icon: ScrollText, color: 'bg-rose-600', domainId: 'NORAC' },
+        { id: 'advisory', name: 'FRA Guidance', icon: AlertCircle, color: 'bg-amber-600', domainId: 'ADVISORY' },
+        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', domainId: 213 },
+        { id: '236', name: 'Signals', icon: Zap, color: 'bg-yellow-500', domainId: 236 },
+        { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', domainId: 229 },
+        { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-purple-500', domainId: 217 },
+        { id: '214', name: 'Workplace', icon: Shield, color: 'bg-cyan-500', domainId: 214 },
+        { id: '219', name: 'Drug/Alcohol', icon: AlertTriangle, color: 'bg-pink-500', domainId: 219 },
+    ];
+
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+            {/* 1. TOP SECTION: MANUALS GRID (AUTO HEIGHT) */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-b border-slate-100 z-10">
+                <SectionTitle title="Library" subtitle="AI Research & Manuals" />
+                <div className="grid grid-cols-4 gap-3 mb-2"> 
+                    <button 
+                        onClick={() => setSelectedContext(null)}
+                        className={`flex flex-col items-center transition-all ${selectedContext === null ? 'opacity-100' : 'opacity-50'}`}
+                    >
+                        <div className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center shadow-md mb-1 border border-slate-700 active:scale-95 transition-transform">
+                            <Globe className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">All Docs</span>
+                    </button>
+                    {manuals.map(m => (
+                        <button 
+                            key={m.id}
+                            onClick={() => setSelectedContext(selectedContext?.id === m.id ? null : m)}
+                            className={`flex flex-col items-center transition-all ${selectedContext?.id === m.id ? 'opacity-100' : selectedContext ? 'opacity-40' : 'opacity-100'}`}
+                        >
+                            <div className={`${m.color} w-14 h-14 rounded-xl flex items-center justify-center shadow-md mb-1 text-white active:scale-95 transition-transform`}>
+                                <m.icon className="w-6 h-6" />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center">{m.name.split(' ')[0]}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
+            <div className="flex-1 min-h-0 relative border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
+                <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} apiUrl={apiUrl} />
+            </div>
+        </div>
+    );
+};
+
+// --- RESTORED VIEWS (Standard Views) ---
+// Removed AdminView component definition
+const JobDetailView = ({ job, onBack }) => (
+    <div className="pb-20 p-6 bg-white min-h-screen">
+        <button onClick={onBack} className="mb-4 text-sm flex items-center text-slate-500 hover:text-slate-900"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
+        <JobLogo logo={job.logo} company={job.company} size="lg"/>
+        <h2 className="text-2xl font-bold mt-4">{job.title}</h2>
+        <div className="flex items-center text-slate-500 mt-2 text-sm">
+             <Building2 className="w-4 h-4 mr-1"/> {job.company}
+             <span className="mx-2">•</span>
+             <MapPin className="w-4 h-4 mr-1"/> {job.location}
+        </div>
+        <div className="mt-6 border-t pt-6">
+            <h3 className="font-bold mb-2">Description</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100">
+            <a href={job.externalLink} target="_blank" className="block w-full bg-slate-900 text-white text-center py-4 rounded-xl font-bold hover:bg-slate-800 transition">
+                Apply Now
+            </a>
+        </div>
+    </div>
+);
+
+const HomeView = ({ changeTab, jobs, onJobClick, apiUrl }) => (
+    <div className="pb-24">
+        <div className="px-4 mt-6">
+            {/* Explicitly display the environment status based on the selected API URL */}
+            <div className={`text-center text-xs font-bold mb-3 p-2 rounded-lg border 
+                ${apiUrl === ENV.API_URL ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-red-50 text-red-600 border-red-200'}`}
+            >
+                ENVIRONMENT: {apiUrl === ENV.API_URL ? 'PRODUCTION' : 'QA'} (API: {apiUrl})
+            </div>
+            
+            <SafetyMinuteCard />
+            
+            <SectionTitle title="Recent Jobs" action={
+                <button onClick={() => changeTab('jobs')} className="text-indigo-600 text-xs font-bold hover:text-indigo-800">View All</button>
+            }/>
+            
+            <div className="space-y-2">
+                {jobs.slice(0,3).map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
+            </div>
+        </div>
+    </div>
+);
+
+const JobsView = ({ jobs, onJobClick }) => (
+    <div className="pb-24 px-4 pt-6">
+        <SectionTitle title="Jobs" subtitle="Marketplace" />
+        <div className="space-y-2">
+            {jobs.map(j => <JobCard key={j._id} job={j} onClick={onJobClick}/>)}
+        </div>
+    </div>
+);
+
+const CompanyView = ({ user, mongoUser, refreshData, apiUrl }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [jobs, setJobs] = useState([]);
+  const [form, setForm] = useState({ title: '', location: '', salary: '', category: 'Field' });
+
+  useEffect(() => { 
+    if (mongoUser?.companyName) { 
+       fetch(`${apiUrl}/jobs`)
+         .then(res => res.json())
+         .then(data => { 
+            setJobs(data.filter(j => j.company === mongoUser.companyName)); 
+         })
+         .catch(err => console.error("Error fetching company jobs", err));
+    } 
+  }, [mongoUser, apiUrl]);
+
+  const handlePostJob = async () => {
+    if (!mongoUser?.companyName) return console.error("Please set your Company Name in Profile first.");
+    try {
+      await fetch(`${apiUrl}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, company: mongoUser.companyName, tags: ['New'] })
+      });
+      refreshData();
+      const newJob = { ...form, company: mongoUser.companyName, tags: ['New'], postedAt: new Date() };
+      setJobs([newJob, ...jobs]);
+      setForm({ title: '', location: '', salary: '', category: 'Field' });
+    } catch (e) {
+      console.error("Failed to post job", e);
+    }
+  };
+
+  return (
+    <div className="pb-20 bg-slate-50 min-h-full">
+       <div className="h-24 bg-slate-900 relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg">{mongoUser?.companyName || "Your Company"}</h2></div></div></div>
+       <div className="mt-10 px-4 border-b flex space-x-6 text-sm font-medium text-slate-500 overflow-x-auto">{['Overview', 'RailOps', 'Jobs'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-indigo-600 border-b-2 border-indigo-600' : 'hover:text-slate-700'}`}>{tab}</button>))}</div>
+       <div className="p-4">
+         {activeTab === 'overview' && <div className="text-center py-10 text-slate-400 text-xs">Overview Stats</div>}
+         {activeTab === 'railops' && <RailOpsView />}
+         {activeTab === 'jobs' && (
+           <div className="bg-white p-5 rounded-xl border mb-6">
+             <input 
+               placeholder="Title" 
+               className="w-full border p-2 rounded mb-2 text-sm" 
+               value={form.title} 
+               onChange={e => setForm({...form, title: e.target.value})} 
+             />
+             <button onClick={handlePostJob} className="w-full bg-slate-900 text-white py-2 rounded font-bold text-xs">Post</button>
+             <div className="mt-4 space-y-2">
+               {jobs.map(j => <JobCard key={j._id} job={j} onClick={() => {}} />)}
+             </div>
+           </div>
+         )}
+       </div>
+    </div>
+  );
+};
+
+const ProfileView = ({ user, mongoUser, refreshProfile, apiUrl }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ role: 'individual', companyName: '', jobTitle: '' });
+  const [myAssignments, setMyAssignments] = useState([]);
+
+  useEffect(() => { 
+    if (mongoUser) {
+        setFormData({ role: mongoUser.role || 'individual', companyName: mongoUser.companyName || '', jobTitle: mongoUser.jobTitle || '' }); 
+        if(mongoUser.email) {
+          fetch(`${apiUrl}/my-assignments?email=${mongoUser.email}`)
+            .then(r => r.json())
+            .then(setMyAssignments)
+            .catch(err => console.error(err));
+        }
+    }
+  }, [mongoUser, apiUrl]);
+
+  const handleSave = async () => { 
+      try {
+        await fetch(`${apiUrl}/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        setIsEditing(false); 
+        refreshProfile(); 
+      } catch (e) {
+        console.error("Save profile failed", e);
+      }
+  };
+
+  return (
+    <div className="pb-20 bg-slate-50 min-h-full">
+       <div className="bg-white border-b pb-6 mb-4"><div className="h-24 bg-slate-900"></div><div className="px-4 -mt-10"><div className="flex justify-between"><img src={user.imageUrl} className="w-24 h-24 rounded-full border-4 border-white" />{!isEditing && <button onClick={() => setIsEditing(true)} className="mt-10 text-xs font-bold bg-slate-100 px-3 py-1 rounded">Edit</button>}</div><h2 className="text-xl font-bold mt-2">{user.fullName}</h2></div></div>
+       <div className="px-4 space-y-4">
+         {isEditing && <div className="bg-white p-4 rounded shadow"><select className="w-full border p-2 mb-2 rounded" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}><option value="individual">Individual</option><option value="company">Company</option></select><input className="w-full border p-2 mb-2" placeholder="Title/Company" value={formData.role === 'company' ? formData.companyName : formData.jobTitle} onChange={e => setFormData({...formData, [formData.role === 'company' ? 'companyName' : 'jobTitle']: e.target.value})} /><button onClick={handleSave} className="w-full bg-indigo-600 text-white py-2 rounded">Save</button></div>}
+         <div className="bg-white p-5 rounded-xl border"><h3 className="font-bold text-sm mb-3">My Schedule</h3>{myAssignments.length > 0 ? myAssignments.map(s => <div key={s._id} className="text-xs border-b py-2">{s.trainId}: {s.origin} &rarr; {s.destination}</div>) : <p className="text-xs text-slate-400">No assignments found.</p>}</div>
+       </div>
+    </div>
+  );
+};
+
+// --- MAIN CONTENT ---
+const MainContent = () => {
+  const [activeTab, setActiveTab] = useState('home');
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({ jobs: [], glossary: [], signals: [] });
+  const [isPro, setIsPro] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showConflict, setShowConflict] = useState(false); 
+  const [mongoUser, setMongoUser] = useState(null);
+  const { user, isSignedIn } = useUser();
+
+  // --- QA/PROD API URL DETERMINATION ---
+  // FIX: Simplified API URL determination to prioritize host name check for clarity
+  const isQaHost = window.location.hostname.includes('qa');
+  const isQAUser = isSignedIn && QA_TEAM_EMAILS.includes(user.primaryEmailAddress?.emailAddress);
+  
+  // If the host URL contains 'qa', use the QA API URL; otherwise use the Production API URL.
+  // This explicitly links the frontend API environment to the deployed host.
+  const apiUrl = isQaHost ? ENV.QA_API_URL : ENV.API_URL;
+  // ------------------------------------
+
+
+  const handleClaimDevice = async () => {
+      const deviceId = getDeviceId();
+      await fetch(`${apiUrl}/users/claim-device`, { // Uses dynamic apiUrl
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, deviceId })
+      });
+      setShowConflict(false);
+      console.log("Device claimed. Please retry your search.");
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [j, g, si] = await Promise.all([
+        fetch(`${apiUrl}/jobs`).then(r => r.ok ? r.json() : []),
+        fetch(`${apiUrl}/glossary`).then(r => r.ok ? r.json() : []),
+        fetch(`${apiUrl}/signals`).then(r => r.ok ? r.json() : [])
+      ]);
+      setData({ jobs: j, glossary: g, signals: si });
+    } catch (e) { 
+      console.error("API Fetch Error:", e);
+      setData({ jobs: [], glossary: [], signals: [] });
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, [apiUrl]); // Refetch when API URL changes
+
+  useEffect(() => {
+    if (isSignedIn && user) {
+        const deviceId = getDeviceId();
+        fetch(`${apiUrl}/users/sync`, { // Uses dynamic apiUrl
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            clerkId: user.id, 
+            email: user.primaryEmailAddress.emailAddress, 
+            fullName: user.fullName,
+            deviceId 
+          })
+        })
+        .then(res => res.json())
+        .then(setMongoUser)
+        .catch(err => console.error("User sync failed:", err));
+    }
+  }, [isSignedIn, user, apiUrl]); 
+
+  useEffect(() => {
+    if (window.location.search.includes('payment=success') || localStorage.getItem('railnology_pro')) setIsPro(true);
+  }, []);
+
+  const ADMIN = ENV.ADMIN_EMAIL;
+  if (selectedJob) return <JobDetailView job={selectedJob} onBack={() => setSelectedJob(null)} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex justify-center font-sans overflow-hidden">
+      <style>{`
+        .scrollbar-thin::-webkit-scrollbar { width: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}</style>
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
+      
+      <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
+        
+        <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
+          <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} isQA={isQAUser} currentApiUrl={apiUrl} />
+        </div>
+        
+        <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
+          
+          
+          {activeTab === 'home' && (
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
+                {/* Removed conditional rendering of AdminView */}
+                <HomeView changeTab={setActiveTab} jobs={data.jobs} onJobClick={setSelectedJob} apiUrl={apiUrl} />
+             </div>
+          )}
+          {activeTab === 'jobs' && (
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
+                <JobsView jobs={data.jobs} onJobClick={setSelectedJob} />
+             </div>
+          )}
+          
+          {activeTab === 'learn' && <LibraryView onPaywall={() => setShowPaywall(true)} onConflict={() => setShowConflict(true)} apiUrl={apiUrl} />}
+          
+          {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} apiUrl={apiUrl} /></div>}
+          {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} apiUrl={apiUrl} /></div>}
+          
+          
+          {activeTab === 'tools' && (
+             <div className="flex-1 overflow-y-auto scrollbar-thin">
+                <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
+             </div>
+          )}
+          
+          
+          {activeTab === 'company' && mongoUser?.role === 'company' && (
+            <div className="flex-1 overflow-y-auto scrollbar-thin">
+              <RailOpsView />
+            </div>
+          )}
+        </div>
+
+        
+        <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 z-50 max-w-[480px] mx-auto w-full">
+            <div className="flex justify-between items-center h-full">
+                <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="learn" icon={BookOpen} label="Library" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="jobs" icon={Briefcase} label="Jobs" onClick={setActiveTab} />
+                <TabButton active={activeTab} id="tools" icon={Wrench} label="Tools" onClick={setActiveTab} />
+                {mongoUser?.role === 'company' && <TabButton active={activeTab} id="company" icon={Building2} label="Dash" onClick={setActiveTab} />}
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const App = () => (
+  <ClerkProvider publishableKey={ENV.CLERK_KEY}>
+    <MainContent />
+  </ClerkProvider>
+);
+export default App;
