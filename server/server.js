@@ -142,21 +142,20 @@ api.post('/chat', async (req, res) => {
     }
     
     // A. Vector Search Step (Semantic Search)
-    // Removed Hybrid Search ($match) and complex fallbacks for stability.
     pipeline.push({
       "$vectorSearch": {
         "index": VECTOR_INDEX_NAME,
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        // CLEANED: Use 10 as the number of candidates to find before projection
+        // FINAL RAG SETTING: Find 10 candidates before projection
         "limit": 10, 
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    // CLEANED: Use 7 as the final number of context chunks passed to the LLM
+    // FINAL RAG SETTING: Use the top 7 chunks for context generation
     pipeline.push({ "$limit": 7 }); 
 
     pipeline.push({
@@ -348,18 +347,3 @@ app.use('/api', api);
 app.get('/', (req, res) => res.status(200).send(`Railnology API is Live. Environment: ${NODE_ENV.toUpperCase()}`));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.use((req, res) => res.status(404).json({ error: "Endpoint not found" }));
-```
-
-### Next Steps: Deploy Backend Fix
-
-1.  **Commit the Code:** Save the updated `server.js` file locally.
-
-    ```bash
-    git add server.js
-    git commit -m "fix: [API/RAG] Maximize Raillie AI context chunks (from 5 to 7) to improve complex, cross-domain query handling."
-    ```
-
-2.  **Push to QA Remote:** Push this change to deploy the upgraded backend API.
-
-    ```bash
-    git push origin main
