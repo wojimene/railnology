@@ -115,7 +115,6 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
                 Railnol<span className="stretched-vowel wordmark-o-style">o</span>gy
             </h1>
             <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
-              {/* UPDATED TAGLINE */}
               Powering the Safety Culture 
               {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
               {/* Only show QA badge if the URL specifically targets the QA API. */}
@@ -367,7 +366,7 @@ const RailOpsView = () => {
             {/* INSPECTION FORM OVERLAY */}
             {showInspection && <TrackInspectionForm onClose={() => setShowInspection(false)} />}
 
-            {/* SUB-NAVIGATION */}
+            /* SUB-NAVIGATION */
             <div className="px-4 mb-4 flex-shrink-0">
                 <div className="bg-gray-100 p-1 rounded-xl flex">
                     {['Dispatch', 'Inspections', 'Reports'].map((tab) => (
@@ -386,9 +385,9 @@ const RailOpsView = () => {
                 </div>
             </div>
 
-            {/* CONTENT AREA */}
+            /* CONTENT AREA */
             <div className="flex-1 overflow-y-auto px-4 scrollbar-thin">
-                {/* 1. DISPATCH TAB */}
+                /* 1. DISPATCH TAB */
                 {subTab === 'dispatch' && (
                     <div className="space-y-4">
                         <div className="bg-[#4A4A4A] rounded-xl p-5 text-white shadow-lg">
@@ -451,7 +450,7 @@ const RailOpsView = () => {
                     </div>
                 )}
 
-                {/* 2. INSPECTIONS TAB (COMPLIANCE) */}
+                /* 2. INSPECTIONS TAB (COMPLIANCE) */
                 {subTab === 'inspections' && (
                     <div className="space-y-4">
                         <div className="bg-white p-6 rounded-xl border border-gray-200 text-center shadow-sm">
@@ -485,7 +484,7 @@ const RailOpsView = () => {
                     </div>
                 )}
 
-                {/* 3. REPORTS TAB */}
+                /* 3. REPORTS TAB */
                 {subTab === 'reports' && (
                     <div className="space-y-4">
                          <div className="grid grid-cols-2 gap-4">
@@ -504,7 +503,7 @@ const RailOpsView = () => {
                 )}
             </div>
 
-            {/* CREW SELECTION MODAL */}
+            /* CREW SELECTION MODAL */
             {selectedSchedule && (
                 <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
                     <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-10">
@@ -583,7 +582,7 @@ const CurveResistanceCalculator = ({ isPro }) => {
           <div className="text-right text-xs font-bold text-[#4A4A4A]">{degree}°</div>
         </div>
 
-        {/* Visualization */}
+        /* Visualization */
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 relative overflow-hidden">
            <div className="flex justify-between items-end mb-1">
              <span className="text-xs font-bold text-gray-500 uppercase">Resistance Force</span>
@@ -689,9 +688,33 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
     { role: 'system', text: contextFilter ? `Raillie active. Focused on: ${contextFilter.name}` : "Hello! I am Raillie. Ask me about 49 CFR regulations." }
   ]);
   const [loading, setLoading] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]); // Persistent History State
+  const [showHistory, setShowHistory] = useState(false); // History Visibility State
   const scrollContainerRef = useRef(null); 
   const inputRef = useRef(null); 
   const { user } = useUser();
+
+  // Load history from localStorage on initial mount
+  useEffect(() => {
+    try {
+        const savedHistory = localStorage.getItem('railly_search_history');
+        if (savedHistory) {
+            setSearchHistory(JSON.parse(savedHistory));
+        }
+    } catch (e) {
+        console.error("Failed to load search history:", e);
+    }
+  }, []);
+
+  // Function to save history to localStorage
+  const updateHistory = (newQuery) => {
+    setSearchHistory(prev => {
+      // Keep unique and slice to last 5
+      const uniqueHistory = [newQuery, ...prev.filter(q => q !== newQuery)].slice(0, 5);
+      localStorage.setItem('railly_search_history', JSON.stringify(uniqueHistory));
+      return uniqueHistory;
+    });
+  };
 
   useEffect(() => {
     if (!loading && scrollContainerRef.current) {
@@ -704,6 +727,23 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
       setMessages(prev => [...prev, { role: 'system', text: `Context switched to: ${contextFilter.name} (Domain ${contextFilter.domainId}).` }]);
     }
   }, [contextFilter]);
+
+  const handleHistoryClick = (historyQuery) => {
+    setQuery(historyQuery);
+    setShowHistory(false); 
+    if (inputRef.current) {
+        inputRef.current.focus();
+    }
+  };
+
+  const handleClearHistory = () => {
+    localStorage.removeItem('railly_search_history');
+    setSearchHistory([]);
+    setShowHistory(false);
+    if (inputRef.current) {
+        inputRef.current.focus();
+    }
+  };
 
   const handleSend = async () => {
     if (!query.trim()) return;
@@ -745,6 +785,9 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
       if (!res.ok) throw new Error('API Error');
       
       const data = await res.json();
+      
+      // Update history only on successful response
+      updateHistory(userMsg);
       
       setMessages(prev => [
         ...prev, 
@@ -841,7 +884,30 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
          )}
        </div>
 
-       <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0">
+       <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0 relative">
+          {/* Persistent History Dropdown */}
+          {showHistory && searchHistory.length > 0 && (
+            <div 
+              className="absolute bottom-full left-3 right-3 bg-white border border-gray-200 rounded-xl shadow-xl mb-2 z-30 overflow-hidden history-dropdown"
+              // TabIndex is needed for onBlur to work correctly in React
+              tabIndex="0" 
+            >
+              <div className="text-[10px] font-bold text-gray-400 px-3 pt-2 pb-1 uppercase flex justify-between items-center border-b border-gray-100">
+                  Recent Searches
+                  <button onClick={handleClearHistory} className="text-gray-400 hover:text-red-600 text-xs font-normal transition">Clear</button>
+              </div>
+              {searchHistory.map((q, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleHistoryClick(q)}
+                  className="w-full text-left px-3 py-2 text-sm text-[#4A4A4A] hover:bg-gray-50 transition truncate border-t border-gray-100"
+                >
+                  <History className="w-4 h-4 inline mr-2 text-gray-300" /> {q}
+                </button>
+              ))}
+            </div>
+          )}
+
          <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-full border border-gray-200 focus-within:border-[#FA5B0F] focus-within:ring-1 focus-within:ring-[#FA5B0F] transition-all">
             <input 
               ref={inputRef} 
@@ -850,6 +916,11 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              onFocus={() => { if (searchHistory.length > 0) setShowHistory(true); }}
+              onBlur={() => { 
+                // Delay hiding to allow clicks on history items
+                setTimeout(() => setShowHistory(false), 150); 
+              }}
             />
             <button 
                 onClick={handleSend} 
@@ -912,7 +983,7 @@ const LibraryView = ({ onPaywall, onConflict, apiUrl }) => {
                 </div>
             </div>
 
-            {/* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */}
+            /* 2. BOTTOM SECTION: RAILLY (FILLS REMAINING SPACE) */
             <div className="flex-1 min-h-0 relative border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20">
                 <AIChat contextFilter={selectedContext} className="h-full" onPaywall={onPaywall} onConflict={onConflict} apiUrl={apiUrl} />
             </div>

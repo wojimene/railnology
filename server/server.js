@@ -92,7 +92,7 @@ api.post('/chat', async (req, res) => {
     if (user.activeDeviceId && user.activeDeviceId !== deviceId) {
         return res.status(409).json({ 
             error: "Session active on another device.",
-            code: "DEVICE_CONFLICT" 
+            code: "CONFLICT" 
         });
     }
 
@@ -148,14 +148,14 @@ api.post('/chat', async (req, res) => {
         "path": "embedding",
         "queryVector": queryVector,
         "numCandidates": 100, 
-        // REVERTED: Finding a smaller, more focused candidate pool for stability
+        // RAG Baseline: Finding 5 candidates before projection for stability
         "limit": 5, 
         "filter": domainFilter // Apply the domain filter here
       }
     });
     
     // B. Final Projection
-    // REVERTED: Using standard 3 chunks for context for maximum reliability
+    // RAG Baseline: Using standard 3 chunks for context for maximum reliability
     pipeline.push({ "$limit": 3 }); 
 
     pipeline.push({
@@ -168,6 +168,9 @@ api.post('/chat', async (req, res) => {
     // Using standard aggregate without maxTimeMS override for Production stability
     const results = await collection.aggregate(pipeline).toArray();
     
+    // DEBUG LOGGING: Log the result count to diagnose RAG failures
+    console.log(`🔎 MongoDB Vector Search Results Found: ${results.length} chunks.`);
+
     // --- 5. GENERATE ANSWER ---
     let sources = [];
     let contextText = results.length > 0 
@@ -189,7 +192,10 @@ api.post('/chat', async (req, res) => {
         }).join("\n\n")
         : "No specific regulations or rules found in the selected domain. Please try selecting a more focused domain filter.";
 
-    // No fallback used flag needed in production stability version
+    // If context is empty, return the client-side error message immediately without calling OpenAI.
+    if (results.length === 0) {
+        return res.status(200).json({ answer: "I'm having trouble connecting to the knowledge base.", sources: [] });
+    }
     
     // Updated prompt with Raillie name
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
