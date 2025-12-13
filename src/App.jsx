@@ -720,8 +720,9 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
   useEffect(() => {
     const lastMessageElement = scrollContainerRef.current?.lastElementChild;
     if (!loading && lastMessageElement) {
-        // Scroll the *end* of the last element into view. For long messages, this puts the start visible.
-        lastMessageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // FIX: Scroll the *start* of the last element into view. 
+        // This ensures the top of the new message is visible.
+        lastMessageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [messages.length]); 
 
