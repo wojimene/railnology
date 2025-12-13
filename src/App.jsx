@@ -97,19 +97,19 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
       <div className="flex justify-between items-center h-full">
         <button 
           onClick={onHomeClick} 
-          // Logo Lockup: Vertical Stack (flex-col)
-          className="flex flex-col items-start focus:outline-none active:opacity-80 transition-opacity justify-center"
+          // Logo Lockup: Horizontal Stack (flex-row)
+          className="flex items-center focus:outline-none active:opacity-80 transition-opacity justify-start"
         >
-          {/* PLATFORM LOGO: Train Icon (Primary Icon) */}
-          <div className="flex items-center justify-center mb-1">
-             <div className="p-1 rounded-md flex items-center justify-center" style={{height: '1.25rem'}}>
-                {/* Icon color set to Secondary Orange #FA5B0F */}
+          {/* PLATFORM ICON (Primary Icon) */}
+          <div className="flex items-center justify-center">
+             <div className="p-1 rounded-md flex items-center justify-center" style={{height: '1.5rem', width: '1.5rem'}}>
+                {/* Icon size adjusted for horizontal lockup (approx. cap height) */}
                 <Train className="w-5 h-5 text-[#FA5B0F] fill-transparent" />
              </div>
           </div>
           
           {/* WORDMARK: Poppins Semibold with custom styling */}
-          <div className="text-left font-poppins-semibold" style={{letterSpacing: '-1.5px'}}>
+          <div className="text-left font-poppins-semibold pl-1" style={{letterSpacing: '-1.5px'}}>
             <h1 className="text-lg tracking-tight leading-none text-white font-semibold" style={{fontSize: '1.1em'}}>
                 Railnol<span className="stretched-vowel">o</span>gy
             </h1>
