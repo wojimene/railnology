@@ -92,6 +92,15 @@ api.post('/chat', async (req, res) => {
     if (!query) return res.status(400).json({ error: "Query required" });
     if (!userId || !deviceId) return res.status(400).json({ error: "User/Device identification required" });
 
+    // 1. New Robustness Check for API Key Status
+    if (!OPENAI_API_KEY) {
+        console.error("❌ RAG ABORTED: OPENAI_API_KEY is missing globally.");
+        return res.status(200).json({ 
+            answer: "System Error: Cannot connect to AI service. The server's API key is missing or invalid.", 
+            sources: [] 
+        });
+    }
+
     // 1. FETCH USER CONTEXT
     const users = db.collection('users');
     const user = await users.findOne({ clerkId: userId });
@@ -158,7 +167,8 @@ api.post('/chat', async (req, res) => {
             ]
         };
     } else if (String(filterDomain).match(/^\d+$/)) { 
-        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterFilter) } };
+        // FIX: Corrected typo from filterFilter to filterDomain
+        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
     } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
         domainFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
     } else if (filterDomain === "ADVISORY") {
