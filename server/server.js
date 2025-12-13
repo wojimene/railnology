@@ -61,11 +61,16 @@ MongoClient.connect(MONGO_URI)
 const api = express.Router();
 
 async function getEmbedding(text) {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text.replace(/\n/g, " "),
-  });
-  return response.data[0].embedding;
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text.replace(/\n/g, " "),
+    });
+    return response.data[0].embedding;
+  } catch (e) {
+     console.error("❌ Embedding Generation Failed:", e.message);
+     return []; // Return empty array on failure
+  }
 }
 
 // ==========================================
@@ -117,6 +122,18 @@ api.post('/chat', async (req, res) => {
     console.log(`🔍 Raillie Processing: "${query}" (Domain: ${filterDomain || 'All'}) (User: ${user.email})`);
     
     const queryVector = await getEmbedding(query);
+    
+    // --- CRITICAL DEBUG CHECK ---
+    if (!queryVector || queryVector.length === 0) {
+        console.log("❌ RAG ABORTED: Query vector is empty. Check OpenAI API key or network connection.");
+        // Return a clean 200 response with the error message for the frontend to display
+        return res.status(200).json({ 
+            answer: "Error: Could not process query vector. Please check the backend connection or API key.", 
+            sources: [] 
+        });
+    }
+    // ----------------------------
+
     const collection = db.collection(COLLECTION_KNOWLEDGE); 
     
     const pipeline = [];
