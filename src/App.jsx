@@ -572,7 +572,7 @@ const CurveResistanceCalculator = ({ isPro }) => {
           <div className="text-right text-xs font-bold text-slate-700">{degree}°</div>
         </div>
 
-        /* Visualization */
+        {/* Visualization */}
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 relative overflow-hidden">
            <div className="flex justify-between items-end mb-1">
              <span className="text-xs font-bold text-slate-500 uppercase">Resistance Force</span>
@@ -1150,18 +1150,15 @@ const MainContent = () => {
       {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
       {showConflict && <DeviceConflictModal onClaim={handleClaimDevice} />}
       
-      /* Main mobile container now handles the fixed position and width constraints. */
       <div className="w-full max-w-[480px] h-screen bg-slate-50 shadow-2xl relative flex flex-col border-x border-slate-200">
         
-        /* Header content */
         <div className="w-full fixed top-0 z-50 max-w-[480px] mx-auto">
           <Header onProfileClick={() => setActiveTab('profile')} onHomeClick={() => setActiveTab('home')} isOffline={false} isPro={isPro} isQA={isQAUser} currentApiUrl={apiUrl} />
         </div>
         
-        /* Main View Area - Handles Scrolling Logic */
         <div className={`flex-1 overflow-hidden relative flex flex-col pt-16 pb-20`}> 
           
-          /* All views inside this scroll container are now scrollable within the fixed bounds */
+          
           {activeTab === 'home' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 {isSignedIn && user?.primaryEmailAddress?.emailAddress === ADMIN && <AdminView refreshData={fetchData} apiUrl={apiUrl} />}
@@ -1179,14 +1176,14 @@ const MainContent = () => {
           {activeTab === 'company' && mongoUser?.role === 'company' && <div className="flex-1 overflow-y-auto scrollbar-thin"><CompanyView user={user} mongoUser={mongoUser} refreshData={fetchData} apiUrl={apiUrl} /></div>}
           {activeTab === 'profile' && isSignedIn && <div className="flex-1 overflow-y-auto scrollbar-thin"><ProfileView user={user} mongoUser={mongoUser} refreshProfile={() => {}} apiUrl={apiUrl} /></div>}
           
-          /* RESTORED TOOLS VIEW */
+          
           {activeTab === 'tools' && (
              <div className="flex-1 overflow-y-auto scrollbar-thin">
                 <ToolsView signalAspects={data.signals} isPro={isPro} onUnlock={() => setShowPaywall(true)} />
              </div>
           )}
           
-          /* RailOps View */
+          
           {activeTab === 'company' && mongoUser?.role === 'company' && (
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               <RailOpsView />
@@ -1194,7 +1191,7 @@ const MainContent = () => {
           )}
         </div>
 
-        /* Bottom Navigation content - Now fixed and scoped to the max-width */
+        
         <div className="bg-white/90 backdrop-blur-lg border-t border-slate-200 px-6 pb-safe h-20 fixed bottom-0 z-50 max-w-[480px] mx-auto w-full">
             <div className="flex justify-between items-center h-full">
                 <TabButton active={activeTab} id="home" icon={LayoutDashboard} label="Home" onClick={setActiveTab} />
