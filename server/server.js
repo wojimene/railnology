@@ -9,7 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Environment Setup
-const __filename = fileURLToPath(import.meta.url);
+const __filename = file URLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -38,9 +38,9 @@ const QA_TEAM_EMAILS = [
 ].filter(Boolean);
 // ----------------------------
 
+// Check environment variable presence at script start
 if (!MONGO_URI || !OPENAI_API_KEY) {
   console.error("❌ FATAL ERROR: Missing MONGO_URI or OPENAI_API_KEY.");
-  // Removed process.exit(1) to allow the app to try and connect, facilitating debugging.
 }
 
 // --- NEW DEBUG LOGGING FOR OPENAI API KEY STATUS ---
@@ -51,7 +51,15 @@ if (OPENAI_API_KEY) {
 }
 // ---------------------------------------------------
 
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+let openai;
+try {
+    // Attempt to initialize OpenAI client
+    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+} catch (e) {
+    console.error("❌ OpenAI Client Initialization Failed:", e.message);
+}
+
+
 let db;
 
 MongoClient.connect(MONGO_URI)
@@ -69,6 +77,12 @@ MongoClient.connect(MONGO_URI)
 const api = express.Router();
 
 async function getEmbedding(text) {
+  // CRITICAL CHECK: Ensure OpenAI object exists before calling it
+  if (!openai) {
+      console.error("❌ getEmbedding Failed: OpenAI client is not initialized.");
+      return [];
+  }
+  
   try {
     const response = await openai.embeddings.create({
       model: "text-embedding-3-small",
@@ -76,7 +90,7 @@ async function getEmbedding(text) {
     });
     return response.data[0].embedding;
   } catch (e) {
-     // NOTE: This will now log, but might still cause a 500 if the key is bad and throws an error outside the try/catch context.
+     // This catches network errors or invalid keys reported by the API call
      console.error("❌ Embedding Generation Failed:", e.message);
      return []; // Return empty array on failure
   }
@@ -93,8 +107,8 @@ api.post('/chat', async (req, res) => {
     if (!userId || !deviceId) return res.status(400).json({ error: "User/Device identification required" });
 
     // 1. New Robustness Check for API Key Status
-    if (!OPENAI_API_KEY) {
-        console.error("❌ RAG ABORTED: OPENAI_API_KEY is missing globally.");
+    if (!OPENAI_API_KEY || !openai) {
+        console.error("❌ RAG ABORTED: OpenAI services are unavailable due to configuration error.");
         return res.status(200).json({ 
             answer: "System Error: Cannot connect to AI service. The server's API key is missing or invalid.", 
             sources: [] 
@@ -144,7 +158,7 @@ api.post('/chat', async (req, res) => {
     // --- CRITICAL DEBUG CHECK ---
     if (!queryVector || queryVector.length === 0) {
         console.log("❌ RAG ABORTED: Query vector is empty. Check OpenAI API key or network connection.");
-        // Return a clean 200 response with the error message for the frontend to display
+        // This clean return prevents the downstream MongoDB call from crashing the server
         return res.status(200).json({ 
             answer: "Error: Could not process query vector. Please check the backend connection or API key.", 
             sources: [] 
