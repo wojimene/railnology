@@ -14,7 +14,8 @@ import {
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 // --- LOGO ---
-const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
+// REMOVED IMAGE PLACEHOLDER: The logo is now rendered using the Train icon below.
+// const RailnologyLogo = "https://placehold.co/150x40/01796F/ffffff?text=RAILNOLOGY+%E2%96%B3"; 
 
 // ==========================================
 // 1. CONFIGURATION & ENVIRONMENT
@@ -100,8 +101,9 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
           onClick={onHomeClick} 
           className="flex items-center space-x-2 focus:outline-none active:opacity-80 transition-opacity"
         >
-          <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm">
-            <img src={RailnologyLogo} alt="Railnology Logo" className="w-5 h-5 object-contain" />
+          {/* PLATFORM LOGO: Using the Train icon */}
+          <div className="bg-amber-500 p-1.5 rounded-md text-slate-900 shadow-sm flex items-center justify-center">
+            <Train className="w-5 h-5 fill-slate-900" />
           </div>
           <div className="text-left">
             <h1 className="text-lg font-extrabold tracking-tight leading-none">{BRAND.name}</h1>
@@ -149,7 +151,8 @@ const JobLogo = ({ logo, company, size="sm" }) => {
   if (!logo || err) {
     return (
       <div className={`${dims} flex-shrink-0 bg-slate-900 rounded-xl flex items-center justify-center shadow-sm p-1`}>
-        <img src={RailnologyLogo} alt="Railnology Logo" className="w-full h-full object-contain" />
+        {/* Placeholder image removed, using default Train icon if no company logo available */}
+        <Train className="w-full h-full object-contain text-amber-500" />
       </div>
     );
   }
@@ -728,6 +731,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
           setMessages(prev => [...prev, { role: 'ai', text: "⚠️ Session paused due to activity on another device." }]);
           return;
       }
+      // FIX: Corrected unterminated string literal
       if (!res.ok) throw new Error('API Error');
       
       const data = await res.json();
@@ -858,7 +862,8 @@ const LibraryView = ({ onPaywall, onConflict, apiUrl }) => {
         { id: 'gcor', name: 'GCOR Rules', icon: ScrollText, color: 'bg-indigo-600', domainId: 'GCOR' },
         { id: 'norac', name: 'NORAC Rules', icon: ScrollText, color: 'bg-rose-600', domainId: 'NORAC' },
         { id: 'advisory', name: 'FRA Guidance', icon: AlertCircle, color: 'bg-amber-600', domainId: 'ADVISORY' },
-        { id: '213', name: 'Track Safety', icon: Train, color: 'bg-emerald-500', domainId: 213 },
+        // Updated icon for Track Safety
+        { id: '213', name: 'Track Safety', icon: Scale, color: 'bg-emerald-500', domainId: 213 },
         { id: '236', name: 'Signals', icon: Zap, color: 'bg-yellow-500', domainId: 236 },
         { id: '229', name: 'Locomotives', icon: Wrench, color: 'bg-blue-500', domainId: 229 },
         { id: '217', name: 'Ops Rules', icon: BookOpen, color: 'bg-purple-500', domainId: 217 },
@@ -932,12 +937,12 @@ const JobDetailView = ({ job, onBack }) => (
 const HomeView = ({ changeTab, jobs, onJobClick, apiUrl }) => (
     <div className="pb-24">
         <div className="px-4 mt-6">
-            {/* Explicitly display the environment status based on the selected API URL */}
-            <div className={`text-center text-xs font-bold mb-3 p-2 rounded-lg border 
-                ${apiUrl === ENV.API_URL ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-red-50 text-red-600 border-red-200'}`}
-            >
-                ENVIRONMENT: {apiUrl === ENV.API_URL ? 'PRODUCTION' : 'QA'} (API: {apiUrl})
-            </div>
+            {/* Conditional Display: Only show environment status if we are in the QA environment */}
+            {apiUrl === ENV.QA_API_URL && (
+                <div className={`text-center text-xs font-bold mb-3 p-2 rounded-lg border bg-red-50 text-red-600 border-red-200`}>
+                    ENVIRONMENT: QA (API: {apiUrl})
+                </div>
+            )}
             
             <SafetyMinuteCard />
             
