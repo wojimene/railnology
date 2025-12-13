@@ -273,7 +273,8 @@ api.post('/chat', async (req, res) => {
       // CRITICAL FIX: Switching to a stable OpenAI model
       model: "gpt-4o-mini", 
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
-      temperature: 0.1
+      // OPTIMIZATION: Increased temperature for better reasoning and synthesis
+      temperature: 0.6
     });
 
     // 6. UPDATE USAGE METRICS (Skip increment for QA users)
