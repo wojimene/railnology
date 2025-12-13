@@ -115,7 +115,8 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
                 Railnol<span className="stretched-vowel wordmark-o-style">o</span>gy
             </h1>
             <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
-              Platform 
+              {/* UPDATED TAGLINE */}
+              Powering the Safety Culture 
               {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
               {/* Only show QA badge if the URL specifically targets the QA API. */}
               {isQaEnvironmentActive && <span className={`ml-2 px-1.5 rounded-full text-[8px] font-bold shadow-glow bg-red-600`}>QA</span>}
