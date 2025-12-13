@@ -270,8 +270,8 @@ api.post('/chat', async (req, res) => {
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
 
     const completion = await openai.chat.completions.create({
-      // CRITICAL FIX: Switching to gemini-2.5-flash for stability and performance
-      model: "gemini-2.5-flash-preview-09-2025", 
+      // CRITICAL FIX: Switching to a stable OpenAI model
+      model: "gpt-4o-mini", 
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
       temperature: 0.1
     });
