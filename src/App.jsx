@@ -112,7 +112,7 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
           {/* Adjusted spacing (pl-1) and custom tracking CSS class applied */}
           <div className="text-left font-poppins-semibold pl-2"> {/* Increased margin to create space for larger icon */}
             <h1 className="text-lg tracking-tight leading-none text-white font-semibold header-wordmark" style={{fontSize: '1.1em'}}>
-                Railnol<span className="stretched-vowel">o</span>gy
+                Railnol<span className="stretched-vowel wordmark-o-style">o</span>gy
             </h1>
             <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
               Platform 
@@ -509,7 +509,7 @@ const RailOpsView = () => {
                     <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-10">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-lg">Assign Crew</h3>
-                            <button onClick={() => setSelectedSchedule(null)}><X className="w-5 h-5 text-gray-400"/></button>
+                            <button onClick={() => setSelectedSchedule(null)}><X className="w-5 h-6 text-gray-400"/></button>
                         </div>
                         <p className="text-xs text-gray-500 mb-4">Select crew for Train <strong>{selectedSchedule.trainId}</strong></p>
                         
@@ -928,9 +928,9 @@ const JobDetailView = ({ job, onBack }) => (
              <span className="mx-2">•</span>
              <MapPin className="w-4 h-4 mr-1"/> {job.location}
         </div>
-        <div className="mt-6 border-t pt-6">
-            <h3 className="font-bold mb-2">Description</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
+        <div class="mt-6 border-t pt-6">
+            <h3 class="font-bold mb-2">Description</h3>
+            <p class="text-gray-600 text-sm leading-relaxed">{job.description || "No description provided."}</p>
         </div>
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
             <a href={job.externalLink} target="_blank" className="block w-full bg-[#4A4A4A] text-white text-center py-4 rounded-xl font-bold hover:bg-[#333] transition">
@@ -1009,7 +1009,7 @@ const CompanyView = ({ user, mongoUser, refreshData, apiUrl }) => {
     <div className="pb-20 bg-white min-h-full">
        <div className="h-24 bg-[#4A4A4A] relative"><div className="absolute -bottom-8 left-4 flex items-end"><div className="w-16 h-16 bg-white p-1 rounded-xl shadow-lg"><div className="w-full h-full bg-[#FA5B0F]/10 rounded-lg flex items-center justify-center text-[#FA5B0F]"><Building2 className="w-8 h-8" /></div></div><div className="ml-3 mb-2"><h2 className="text-white font-bold text-lg font-poppins-semibold">{mongoUser?.companyName || "Your Company"}</h2></div></div></div>
        <div className="mt-10 px-4 border-b flex space-x-6 text-sm font-medium text-gray-500 overflow-x-auto">{['Overview', 'RailOps', 'Jobs'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab.toLowerCase())} className={`pb-2 whitespace-nowrap ${activeTab === tab.toLowerCase() ? 'text-[#FA5B0F] border-b-2 border-[#FA5B0F]' : 'hover:text-[#4A4A4A]'}`}>{tab}</button>))}</div>
-       <div className="p-4">
+       <div class="p-4">
          {activeTab === 'overview' && <div className="text-center py-10 text-gray-400 text-xs">Overview Stats</div>}
          {activeTab === 'railops' && <RailOpsView />}
          {activeTab === 'jobs' && (
@@ -1154,23 +1154,28 @@ const MainContent = () => {
     <div className="min-h-screen bg-white flex justify-center font-sans overflow-hidden">
       {/* --- FONT STYLING AND CUSTOM CLASSES --- */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&display=swap');
         
         .scrollbar-thin::-webkit-scrollbar { width: 3px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
         
-        /* Custom Font Class for Logo and Headings */
+        /* Custom Font Class for Logo and Headings (SemiBold) */
         .font-poppins-semibold {
             font-family: 'Poppins', sans-serif;
             font-weight: 600; 
         }
-
-        /* Logo Elongation CSS (2.0x horizontal stretch on the second 'o') */
+        
+        /* Logo Elongation CSS (2.0x horizontal stretch) */
         .stretched-vowel {
             display: inline-block;
             transform: scaleX(2.0); 
             margin: 0 6px; /* ADJUSTED: Increased space around 'o' to 6px (2x previous 3px) */
+        }
+
+        /* Specific style for the stretched 'o' to make it less bold/more rectangular */
+        .wordmark-o-style {
+            font-weight: 500; /* Medium weight, contrasting with SemiBold 600 */
         }
 
         /* NEW TRACKING ADJUSTMENT (Increased tracking from -1.8px to 0.5px) */
