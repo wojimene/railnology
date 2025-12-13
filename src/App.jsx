@@ -102,17 +102,17 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
         >
           {/* PLATFORM ICON (Primary Icon) */}
           <div className="flex items-center justify-center">
-             {/* Icon size adjusted to match wordmark height (approx 1.2em) */}
-             <div className="p-1 flex items-center justify-center" style={{height: '1.2em', width: '1.2em'}}>
+             {/* Icon size adjusted for maximum visual height (approx 1.5em) */}
+             <div className="p-1 flex items-center justify-center" style={{height: '1.5em', width: '1.5em'}}>
                 {/* Icon size adjusted to cover 100% of the wordmark height */}
                 <Train className="w-full h-full text-[#FA5B0F] fill-transparent" />
              </div>
           </div>
           
           {/* WORDMARK: Poppins Semibold with custom styling */}
-          {/* Adjusted spacing to 0.75 * X (visually implemented by pl-1) and applied new tracking CSS */}
+          {/* Adjusted spacing (pl-1) and custom tracking CSS class applied */}
           <div className="text-left font-poppins-semibold pl-1">
-            <h1 className="text-lg tracking-tight leading-none text-white font-semibold" style={{fontSize: '1.1em', letterSpacing: '-1.8px'}}>
+            <h1 className="text-lg tracking-tight leading-none text-white font-semibold header-wordmark" style={{fontSize: '1.1em'}}>
                 Railnol<span className="stretched-vowel">o</span>gy
             </h1>
             <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
@@ -1174,9 +1174,9 @@ const MainContent = () => {
             margin: 0 1px; /* Slight adjustment for visual spacing */
         }
 
-        /* NEW TRACKING ADJUSTMENT (Increased tracking by approx 20% from old -1.5px) */
+        /* NEW TRACKING ADJUSTMENT (Increased tracking from -1.8px to 0.5px) */
         .header-wordmark {
-            letter-spacing: -1.8px;
+            letter-spacing: 0.5px;
         }
       `}</style>
 
@@ -1242,6 +1242,4 @@ const MainContent = () => {
 const App = () => (
   <ClerkProvider publishableKey={ENV.CLERK_KEY}>
     <MainContent />
-  </ClerkProvider>
-);
-export default App;
+  </Cler</code>
