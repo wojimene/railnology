@@ -102,16 +102,15 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
         >
           {/* PLATFORM ICON (Primary Icon) */}
           <div className="flex items-center justify-center">
-             {/* Icon size adjusted for maximum visual height (approx 1.5em) */}
-             <div className="p-1 flex items-center justify-center" style={{height: '1.5em', width: '1.5em'}}>
-                {/* Icon size adjusted to cover 100% of the wordmark height */}
+             {/* Icon size adjusted to 2em (visually 1x bigger) + Orange Border */}
+             <div className="p-1 flex items-center justify-center border-2 border-[#FA5B0F] rounded-md" style={{height: '2em', width: '2em'}}>
                 <Train className="w-full h-full text-[#FA5B0F] fill-transparent" />
              </div>
           </div>
           
           {/* WORDMARK: Poppins Semibold with custom styling */}
           {/* Adjusted spacing (pl-1) and custom tracking CSS class applied */}
-          <div className="text-left font-poppins-semibold pl-1">
+          <div className="text-left font-poppins-semibold pl-2"> {/* Increased margin to create space for larger icon */}
             <h1 className="text-lg tracking-tight leading-none text-white font-semibold header-wordmark" style={{fontSize: '1.1em'}}>
                 Railnol<span className="stretched-vowel">o</span>gy
             </h1>
@@ -1171,7 +1170,7 @@ const MainContent = () => {
         .stretched-vowel {
             display: inline-block;
             transform: scaleX(1.75); 
-            margin: 0 1px; /* Slight adjustment for visual spacing */
+            margin: 0 3px; /* ADJUSTED: Increased space around 'o' to 3px */
         }
 
         /* NEW TRACKING ADJUSTMENT (Increased tracking from -1.8px to 0.5px) */
