@@ -40,8 +40,16 @@ const QA_TEAM_EMAILS = [
 
 if (!MONGO_URI || !OPENAI_API_KEY) {
   console.error("❌ FATAL ERROR: Missing MONGO_URI or OPENAI_API_KEY.");
-  process.exit(1);
+  // Removed process.exit(1) to allow the app to try and connect, facilitating debugging.
 }
+
+// --- NEW DEBUG LOGGING FOR OPENAI API KEY STATUS ---
+if (OPENAI_API_KEY) {
+    console.log(`🔑 OPENAI_API_KEY Status: Found (${OPENAI_API_KEY.length} chars).`);
+} else {
+    console.log(`🔑 OPENAI_API_KEY Status: MISSING. Check environment variables.`);
+}
+// ---------------------------------------------------
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 let db;
@@ -68,6 +76,7 @@ async function getEmbedding(text) {
     });
     return response.data[0].embedding;
   } catch (e) {
+     // NOTE: This will now log, but might still cause a 500 if the key is bad and throws an error outside the try/catch context.
      console.error("❌ Embedding Generation Failed:", e.message);
      return []; // Return empty array on failure
   }
@@ -149,7 +158,7 @@ api.post('/chat', async (req, res) => {
             ]
         };
     } else if (String(filterDomain).match(/^\d+$/)) { 
-        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterDomain) } };
+        domainFilter = { "document_type": "Regulation", "part": { "$eq": Number(filterFilter) } };
     } else if (filterDomain === "GCOR" || filterDomain === "NORAC") {
         domainFilter = { "document_type": "Operating Rule", "rule_system": { "$eq": filterDomain } };
     } else if (filterDomain === "ADVISORY") {
