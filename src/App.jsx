@@ -716,9 +716,12 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
     });
   };
 
+  // SCROLL FIX: Scroll to the bottom of the last message element
   useEffect(() => {
-    if (!loading && scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    const lastMessageElement = scrollContainerRef.current?.lastElementChild;
+    if (!loading && lastMessageElement) {
+        // Scroll the *end* of the last element into view. For long messages, this puts the start visible.
+        lastMessageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages.length]); 
 
