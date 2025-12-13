@@ -38,27 +38,26 @@ const QA_TEAM_EMAILS = [
 ].filter(Boolean);
 // ----------------------------
 
-// Check environment variable presence at script start
-if (!MONGO_URI || !OPENAI_API_KEY) {
-  console.error("❌ FATAL ERROR: Missing MONGO_URI or OPENAI_API_KEY.");
-}
-
-// --- NEW DEBUG LOGGING FOR OPENAI API KEY STATUS ---
-if (OPENAI_API_KEY) {
-    console.log(`🔑 OPENAI_API_KEY Status: Found (${OPENAI_API_KEY.length} chars).`);
-} else {
-    console.log(`🔑 OPENAI_API_KEY Status: MISSING. Check environment variables.`);
-}
-// ---------------------------------------------------
+// ===============================================
+// CRITICAL: ROBUST OPENAI INITIALIZATION
+// ===============================================
 
 let openai;
-try {
-    // Attempt to initialize OpenAI client
-    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-} catch (e) {
-    console.error("❌ OpenAI Client Initialization Failed:", e.message);
-}
 
+if (!OPENAI_API_KEY) {
+  console.error("❌ CRITICAL: OPENAI_API_KEY is MISSING. AI features will be disabled.");
+  console.log(`🔑 OPENAI_API_KEY Status: MISSING.`);
+} else {
+    try {
+        // Attempt to initialize OpenAI client
+        openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+        console.log(`🔑 OPENAI_API_KEY Status: Found (${OPENAI_API_KEY.length} chars).`);
+    } catch (e) {
+        console.error("❌ CRITICAL: OpenAI Client Initialization Failed (Check Key Validity).", e.message);
+        openai = null; // Ensure openai remains null if initialization fails
+    }
+}
+// ===============================================
 
 let db;
 
@@ -107,10 +106,10 @@ api.post('/chat', async (req, res) => {
     if (!userId || !deviceId) return res.status(400).json({ error: "User/Device identification required" });
 
     // 1. New Robustness Check for API Key Status
-    if (!OPENAI_API_KEY || !openai) {
-        console.error("❌ RAG ABORTED: OpenAI services are unavailable due to configuration error.");
+    if (!openai) {
+        console.error("❌ RAG ABORTED: OpenAI services are unavailable.");
         return res.status(200).json({ 
-            answer: "System Error: Cannot connect to AI service. The server's API key is missing or invalid.", 
+            answer: "System Error: Cannot connect to AI service. The server is misconfigured.", 
             sources: [] 
         });
     }
