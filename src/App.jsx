@@ -1242,4 +1242,6 @@ const MainContent = () => {
 const App = () => (
   <ClerkProvider publishableKey={ENV.CLERK_KEY}>
     <MainContent />
-  </Cler</code>
+  </ClerkProvider>
+);
+export default App;
