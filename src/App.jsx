@@ -647,12 +647,7 @@ const SynthesisExportModal = ({ content, onClose, title }) => {
 
     const copyToClipboard = () => {
         // Use synchronous copy command for better iframe compatibility
-        const el = document.createElement('textarea');
-        el.value = content;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
+        document.execCommand('copy', false, content);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -829,14 +824,42 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
           },
       };
 
-      try {
-          const response = await fetch(ttsApiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-          });
+      let retries = 3;
+      let delay = 1000;
+      let response;
 
-          if (!response.ok) throw new Error(`TTS API failed with status ${response.status}`);
+      for (let attempt = 0; attempt < retries; attempt++) {
+          try {
+              response = await fetch(ttsApiUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              });
+
+              if (response.ok) break;
+
+              if (attempt < retries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  delay *= 2;
+              } else {
+                  throw new Error(`TTS API failed after ${retries} attempts with status ${response.status}`);
+              }
+
+          } catch (e) {
+              if (attempt < retries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  delay *= 2;
+                  continue;
+              }
+              throw e; // Re-throw the original error after max retries
+          }
+      }
+
+      try {
+          // Check if loop completed successfully
+          if (!response || !response.ok) {
+              throw new Error("TTS API call failed and max retries exhausted.");
+          }
           
           const result = await response.json();
           const part = result?.candidates?.[0]?.content?.parts?.[0];
@@ -1021,7 +1044,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
     }
     
     return (
-        <div className="mt-3 flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap mb-3">
             {/* 1. TTS Button/Status */}
             <button 
                 onClick={() => handleTtsGeneration(answer, messageId)}
@@ -1153,8 +1176,8 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
                   ? 'max-w-[85%] p-3.5 rounded-2xl bg-[#4A4A4A] text-white rounded-br-none shadow-sm' 
                   : 'w-full text-[#4A4A4A] pl-1' 
               }`}>
-                 <p className="whitespace-pre-wrap">{m.text}</p>
                  {m.role === 'ai' && (
+                    /* OUTPUT CONTROLS PLACED AT THE TOP OF THE AI MESSAGE */
                     <OutputControls 
                         query={messages.findLast(msg => msg.role === 'user')?.text || ""} 
                         answer={m.text} 
@@ -1162,9 +1185,10 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
                         messageId={i}
                     />
                  )}
+                 <p className="whitespace-pre-wrap">{m.text}</p>
               </div>
               
-              {/* SOURCE PILLS - UPDATED LOGIC */}
+              {/* SOURCE PILLS RENDERED BELOW THE TEXT/CONTROLS */}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 w-full justify-start pl-1">
                   {m.sources.map((source, idx) => {
