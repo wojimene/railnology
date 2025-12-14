@@ -270,7 +270,7 @@ api.post('/chat', async (req, res) => {
     const systemPrompt = `You are Raillie, an expert FRA compliance and rail operations assistant. Use the CONTEXT to answer. Cite the specific Source ID provided in the context text, including the rule number or section. CONTEXT: ${contextText}`;
 
     const completion = await openai.chat.completions.create({
-      // CRITICAL FIX: Switching to a stable OpenAI model
+      // CRITICAL FIX: Switched LLM to gpt-4o-mini for stability and reasoning
       model: "gpt-4o-mini", 
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
       // OPTIMIZATION: Increased temperature for better reasoning and synthesis
@@ -296,6 +296,68 @@ api.post('/chat', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// ==========================================
+// 🎵 NEW: TTS Endpoint for Podcast Generation
+// ==========================================
+
+// NOTE: This endpoint uses a different model (Gemini TTS) and protects the API key.
+api.post('/tts', async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).send({ error: 'Text required for TTS.' });
+    
+    // CRITICAL CHECK: Ensure we have the API Key
+    // We use the OPENAI_API_KEY environment variable to store the secure key
+    const GEMINI_API_KEY = OPENAI_API_KEY; 
+    
+    if (!GEMINI_API_KEY) { 
+        console.error("❌ TTS Request Failed: API key is not available for proxy.");
+        return res.status(503).send({ error: 'AI Service Unavailable: Missing API Key.' });
+    }
+
+    // NOTE: Hitting the Google Generative Language endpoint directly using the secured key.
+    const ttsApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`;
+    
+    // VOICE CONFIGURATION (Kore is a firm, clear voice)
+    const payload = {
+        contents: [{ parts: [{ text: text }] }],
+        generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: "Kore" }
+                }
+            }
+        },
+    };
+
+    try {
+        const response = await fetch(ttsApiUrl, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            console.error(`TTS Proxy Error: API returned ${response.status}`);
+            // Attempt to read error message from API response if available
+            const errorBody = await response.json();
+            return res.status(response.status).send({ error: errorBody.error?.message || 'External TTS API Failure.' });
+        }
+        
+        const result = await response.json();
+        
+        // Proxy the successful result back to the client (contains audio base64)
+        res.json(result);
+
+    } catch (error) {
+        console.error("❌ TTS Proxy Error:", error);
+        res.status(500).send({ error: 'Internal TTS Proxy Error.' });
+    }
+});
+
 
 // ==========================================
 // ⚙️ DIAGNOSTIC ENDPOINT

@@ -801,28 +801,15 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
   };
   
   const handleTtsGeneration = async (text, messageId) => {
-      if (ttsLoadingState[messageId] || playingMessageId) return;
+      if (ttsLoadingState[messageId] || playingMessageId || synthesisLoading) return;
 
       setTtsLoadingState(prev => ({ ...prev, [messageId]: true }));
       setPlayingMessageId(null);
       
-      const voice = "Kore"; // Default voice for clear, firm instructions
+      // Call backend proxy for TTS
+      const ttsApiUrl = `${apiUrl}/tts`; 
 
-      // Use the system's ability to provide the API key
-      const apiKey = ""; 
-      const ttsApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-      const payload = {
-          contents: [{ parts: [{ text: text }] }],
-          generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                  voiceConfig: {
-                      prebuiltVoiceConfig: { voiceName: voice }
-                  }
-              }
-          },
-      };
+      const payload = { text: text };
 
       let retries = 3;
       let delay = 1000;
@@ -864,7 +851,8 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
           const result = await response.json();
           const part = result?.candidates?.[0]?.content?.parts?.[0];
           const audioData = part?.inlineData?.data;
-          const mimeType = part?.inlineData?.mimeType;
+          // The API returns 'audio/L16'
+          const mimeType = part?.inlineData?.mimeType; 
 
           if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
               const rateMatch = mimeType.match(/rate=(\d+)/);
@@ -958,6 +946,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
   };
 
   const handleGenerateSynthesis = async (query, answer, sources) => {
+      if (synthesisLoading || playingMessageId) return; // Prevent synthesis if TTS is busy
       setSynthesisLoading(true);
       
       // 1. Prepare RAG Context (rebuilding the context string from sources)
