@@ -649,7 +649,7 @@ const PaywallModal = ({ onClose }) => (
       <div className="w-14 h-14 bg-[#FA5B0F]/10 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
         <Lock className="w-6 h-6 text-[#FA5B0F]" />
       </div>
-      <h3 className="text-xl font-extrabold text-center text-[#4A4A4A] mb-2">Usage Limit Reached</h3>
+      <h3 className className="text-xl font-extrabold text-center text-[#4A4A4A] mb-2">Usage Limit Reached</h3>
       <p className="text-center text-gray-500 text-sm mb-6 leading-relaxed">
         You've used your 10 free daily searches. Upgrade to Pro for unlimited Raillie AI access.
       </p>
@@ -914,6 +914,7 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
 
          <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-full border border-gray-200 focus-within:border-[#FA5B0F] focus-within:ring-1 focus-within:ring-[#FA5B0F] transition-all">
             <input 
+              type="text" // Explicit type added for mobile compatibility
               ref={inputRef} 
               className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-[#4A4A4A] placeholder-gray-400"
               placeholder={contextFilter ? `Ask about ${contextFilter.name}...` : "Ask Raillie..."}
