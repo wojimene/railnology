@@ -114,7 +114,7 @@ const Header = ({ isOffline, isPro, isQA, currentApiUrl, onProfileClick, onHomeC
             <h1 className="text-lg tracking-tight leading-none text-white font-semibold header-wordmark" style={{fontSize: '1.1em'}}>
                 Railnol<span className="stretched-vowel wordmark-o-style">o</span>gy
             </h1>
-            <p className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
+            <p className className="text-[9px] text-gray-300 tracking-widest font-medium uppercase mt-0.5">
               Powering the Safety Culture 
               {isPro && <span className="ml-2 bg-emerald-500 text-white px-1.5 rounded-full text-[8px] font-bold shadow-glow">PRO</span>}
               {/* Only show QA badge if the URL specifically targets the QA API. */}
@@ -491,7 +491,7 @@ const RailOpsView = () => {
                             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:border-gray-300 transition cursor-pointer">
                                 <FileText className="w-8 h-8 text-gray-400 mb-3" />
                                 <h4 className="font-bold text-sm text-[#4A4A4A]">Daily Ops</h4>
-                                <p className="text-[10px] text-gray-500">Crew hours & delays</p>
+                                <p className className="text-[10px] text-gray-500">Crew hours & delays</p>
                             </div>
                             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:border-gray-300 transition cursor-pointer">
                                 <FileBarChart className="w-8 h-8 text-gray-400 mb-3" />
@@ -642,6 +642,48 @@ const SafetyMinuteCard = () => (
 );
 
 // --- MODALS ---
+const SynthesisExportModal = ({ content, onClose, title }) => {
+    const [copied, setCopied] = useState(false);
+
+    const copyToClipboard = () => {
+        // Use synchronous copy command for better iframe compatibility
+        const el = document.createElement('textarea');
+        el.value = content;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[80] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-[#4A4A4A]">{title}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">Copy the synthesized summary below for use in your external reasoning tool (e.g., NotebookLM).</p>
+                
+                <div className="bg-gray-50 p-4 h-64 overflow-y-auto rounded-xl border border-gray-200 mb-4">
+                    <pre className="text-sm text-[#4A4A4A] whitespace-pre-wrap font-mono">{content}</pre>
+                </div>
+
+                <button 
+                    onClick={copyToClipboard}
+                    className={`w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center ${
+                        copied ? 'bg-emerald-500 text-white' : 'bg-[#FA5B0F] text-white hover:bg-[#D44E0D]'
+                    }`}
+                >
+                    {copied ? <CheckCircle className="w-4 h-4 mr-2" /> : <ClipboardCheck className="w-4 h-4 mr-2" />}
+                    {copied ? 'Copied to Clipboard!' : 'Copy Summary Text'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const PaywallModal = ({ onClose }) => (
   <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
     <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
@@ -649,7 +691,7 @@ const PaywallModal = ({ onClose }) => (
       <div className="w-14 h-14 bg-[#FA5B0F]/10 rounded-full flex items-center justify-center mb-4 mx-auto border-4 border-white shadow-sm">
         <Lock className="w-6 h-6 text-[#FA5B0F]" />
       </div>
-      <h3 className className="text-xl font-extrabold text-center text-[#4A4A4A] mb-2">Usage Limit Reached</h3>
+      <h3 className="text-xl font-extrabold text-center text-[#4A4A4A] mb-2">Usage Limit Reached</h3>
       <p className="text-center text-gray-500 text-sm mb-6 leading-relaxed">
         You've used your 10 free daily searches. Upgrade to Pro for unlimited Raillie AI access.
       </p>
@@ -690,9 +732,152 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
   const [loading, setLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]); // Persistent History State
   const [showHistory, setShowHistory] = useState(false); // History Visibility State
+  const [showSynthesisModal, setShowSynthesisModal] = useState(false); // New modal state
+  const [synthesisContent, setSynthesisContent] = useState(''); // Content for the modal
+  const [synthesisLoading, setSynthesisLoading] = useState(false); // Loading for synthesis button
   const scrollContainerRef = useRef(null); 
   const inputRef = useRef(null); 
   const { user } = useUser();
+  
+  // --- TTS STATE AND HELPERS (REINTRODUCED) ---
+  const [ttsLoadingState, setTtsLoadingState] = useState({}); // Stores loading state by messageId
+  const [playingMessageId, setPlayingMessageId] = useState(null); // Stores ID of currently playing message
+  const audioRef = useRef(new Audio());
+
+  const base64ToArrayBuffer = (base64) => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  };
+
+  const pcmToWav = (pcm16, sampleRate = 16000) => {
+      const numChannels = 1;
+      const bitsPerSample = 16;
+      const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+      const blockAlign = numChannels * (bitsPerSample / 8);
+      const dataSize = pcm16.length * 2;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      let offset = 0;
+      // RIFF header
+      view.setUint32(offset, 0x52494646, false); // "RIFF"
+      offset += 4;
+      view.setUint32(offset, 36 + dataSize, true); // file size
+      offset += 4;
+      view.setUint32(offset, 0x57415645, false); // "WAVE"
+      offset += 4;
+
+      // fmt sub-chunk
+      view.setUint32(offset, 0x666d7420, false); // "fmt "
+      offset += 4;
+      view.setUint32(offset, 16, true); // sub-chunk size (16 for PCM)
+      offset += 4;
+      view.setUint16(offset, 1, true); // audio format (1 for PCM)
+      offset += 2;
+      view.setUint16(offset, numChannels, true); // number of channels
+      offset += 2;
+      view.setUint32(offset, sampleRate, true); // sample rate
+      offset += 4;
+      view.setUint32(offset, byteRate, true); // byte rate
+      offset += 4;
+      view.setUint16(offset, blockAlign, true); // block align
+      offset += 2;
+      view.setUint16(offset, bitsPerSample, true); // bits per sample
+      offset += 2;
+
+      // data sub-chunk
+      view.setUint32(offset, 0x64617461, false); // "data"
+      offset += 4;
+      view.setUint32(offset, dataSize, true); // data size
+      offset += 4;
+
+      // PCM data
+      for (let i = 0; i < pcm16.length; i++) {
+          view.setInt16(offset, pcm16[i], true);
+          offset += 2;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+  };
+  
+  const handleTtsGeneration = async (text, messageId) => {
+      if (ttsLoadingState[messageId] || playingMessageId) return;
+
+      setTtsLoadingState(prev => ({ ...prev, [messageId]: true }));
+      setPlayingMessageId(null);
+      
+      const voice = "Kore"; // Default voice for clear, firm instructions
+
+      // Use the system's ability to provide the API key
+      const apiKey = ""; 
+      const ttsApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+      const payload = {
+          contents: [{ parts: [{ text: text }] }],
+          generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                  voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: voice }
+                  }
+              }
+          },
+      };
+
+      try {
+          const response = await fetch(ttsApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) throw new Error(`TTS API failed with status ${response.status}`);
+          
+          const result = await response.json();
+          const part = result?.candidates?.[0]?.content?.parts?.[0];
+          const audioData = part?.inlineData?.data;
+          const mimeType = part?.inlineData?.mimeType;
+
+          if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+              const rateMatch = mimeType.match(/rate=(\d+)/);
+              const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 16000;
+              
+              const pcmDataBuffer = base64ToArrayBuffer(audioData);
+              const pcm16 = new Int16Array(pcmDataBuffer);
+              const wavBlob = pcmToWav(pcm16, sampleRate);
+              
+              const audioUrl = URL.createObjectURL(wavBlob);
+              
+              // Stop previous audio and play new one
+              audioRef.current.pause();
+              audioRef.current.src = audioUrl;
+              audioRef.current.play();
+              setPlayingMessageId(messageId);
+
+              audioRef.current.onended = () => {
+                setPlayingMessageId(null);
+                URL.revokeObjectURL(audioUrl); // Clean up the blob URL
+              };
+
+          } else {
+              console.error("TTS Response missing audio data or invalid format.");
+              setMessages(prev => [...prev, { role: 'system', text: "Error: Audio generation failed." }]);
+          }
+
+      } catch (e) {
+          console.error("TTS API Error:", e);
+          setMessages(prev => [...prev, { role: 'system', text: "Error: Could not generate audio summary." }]);
+      } finally {
+          setTtsLoadingState(prev => ({ ...prev, [messageId]: false }));
+      }
+  };
+  
+  // --- TTS STATE AND HELPERS (END) ---
 
   // Load history from localStorage on initial mount
   useEffect(() => {
@@ -749,9 +934,127 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
     }
   };
 
+  const handleGenerateSynthesis = async (query, answer, sources) => {
+      setSynthesisLoading(true);
+      
+      // 1. Prepare RAG Context (rebuilding the context string from sources)
+      const contextText = sources.map(s => `[Source: ${s.sourceId}]\n${s.text}`).join("\n\n");
+      
+      // 2. Define Synthesis Prompt (Goal: long-form summary for external tool)
+      const synthesisPrompt = `You are a compliance research assistant. Based on the original query and the provided context/answer blocks, generate a single, comprehensive, highly detailed summary. The summary must be ready for export to an external synthesis tool (like NotebookLM). Do not include your own system preamble or quotes around the summary. Focus on connecting the legal and operational topics.`;
+
+      try {
+          const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`;
+          
+          const payload = {
+              contents: [{ 
+                  parts: [{ text: synthesisPrompt + "\n\nOriginal Query: " + query + "\n\nOriginal Answer: " + answer + "\n\nContext Blocks: " + contextText }] 
+              }],
+          };
+
+          const response = await fetch(geminiApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) throw new Error(`Synthesis API failed with status ${response.status}`);
+          
+          const result = await response.json();
+          const synthesizedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not generate detailed synthesis.";
+
+          setSynthesisContent(synthesizedText);
+          setShowSynthesisModal(true);
+
+      } catch (e) {
+          console.error("Synthesis Generation Error:", e);
+          setSynthesisContent("Error: Failed to generate exportable summary due to an API or network issue.");
+          setShowSynthesisModal(true);
+      } finally {
+          setSynthesisLoading(false);
+      }
+  };
+
+  // --- HYBRID OUTPUT CONTROLS ---
+  const OutputControls = ({ query, answer, sources, messageId }) => {
+    const isLatestAiMessage = messages[messages.length - 1]?.role === 'ai' && messageId === messages.length - 1;
+
+    if (!isLatestAiMessage) return null;
+
+    const isLoadingTts = ttsLoadingState[messageId];
+    const isPlayingTts = playingMessageId === messageId;
+    const isBusy = synthesisLoading || isLoadingTts || isPlayingTts;
+
+    // TTS Button Status
+    let ttsButtonContent;
+    let ttsButtonClass;
+    if (isLoadingTts) {
+        ttsButtonContent = <>
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Generating Audio...
+        </>;
+        ttsButtonClass = "bg-gray-100 text-gray-500";
+    } else if (isPlayingTts) {
+        ttsButtonContent = <>
+            <Zap className="w-3 h-3 mr-1" /> Playing
+        </>;
+        ttsButtonClass = "bg-emerald-500 text-white";
+    } else {
+        ttsButtonContent = <>
+            <Radio className="w-3 h-3 mr-1" /> Listen to Podcast
+        </>;
+        ttsButtonClass = "bg-[#FA5B0F]/10 text-[#4A4A4A] hover:bg-[#FA5B0F]/20";
+    }
+
+    // Synthesis Button Status
+    let synthesisButtonContent;
+    let synthesisButtonClass;
+    if (synthesisLoading) {
+        synthesisButtonContent = <>
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Synthesizing...
+        </>;
+        synthesisButtonClass = "bg-gray-100 text-gray-500";
+    } else {
+        synthesisButtonContent = <>
+            <BookOpen className="w-3 h-3 mr-1" /> Synthesize & Export
+        </>;
+        synthesisButtonClass = "bg-[#4A4A4A] text-white hover:bg-[#333]";
+    }
+    
+    return (
+        <div className="mt-3 flex gap-2 flex-wrap">
+            {/* 1. TTS Button/Status */}
+            <button 
+                onClick={() => handleTtsGeneration(answer, messageId)}
+                disabled={isBusy && !isPlayingTts} // Allow stopping playback
+                className={`text-xs flex items-center px-3 py-1.5 rounded-full transition ${ttsButtonClass}`}
+            >
+                {ttsButtonContent}
+            </button>
+
+            {/* 2. Synthesis Button/Status */}
+            <button 
+                onClick={() => handleGenerateSynthesis(query, answer, sources)}
+                disabled={isBusy}
+                className={`text-xs flex items-center px-3 py-1.5 rounded-full transition ${synthesisButtonClass}`}
+            >
+                {synthesisButtonContent}
+            </button>
+        </div>
+    );
+  };
+  // --- HYBRID OUTPUT CONTROLS (END) ---
+
   const handleSend = async () => {
     if (!query.trim()) return;
     const userMsg = query;
+    
+    // CRITICAL: Stop any currently playing audio before sending a new query
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        setPlayingMessageId(null);
+    }
+    
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setQuery('');
     setLoading(true);
@@ -812,6 +1115,14 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
 
   return (
     <div className={`flex flex-col bg-white overflow-hidden relative ${className || 'h-[60vh]'}`}>
+       {/* Synthesis Export Modal */}
+       {showSynthesisModal && (
+           <SynthesisExportModal 
+               content={synthesisContent} 
+               title="Export Summary" 
+               onClose={() => setShowSynthesisModal(false)}
+           />
+       )}
        {/* Context Badge */}
        {contextFilter && (
          <div className="absolute top-14 left-0 right-0 flex justify-center pointer-events-none z-10">
@@ -843,6 +1154,14 @@ const AIChat = ({ contextFilter, className, onPaywall, onConflict, apiUrl }) => 
                   : 'w-full text-[#4A4A4A] pl-1' 
               }`}>
                  <p className="whitespace-pre-wrap">{m.text}</p>
+                 {m.role === 'ai' && (
+                    <OutputControls 
+                        query={messages.findLast(msg => msg.role === 'user')?.text || ""} 
+                        answer={m.text} 
+                        sources={m.sources} 
+                        messageId={i}
+                    />
+                 )}
               </div>
               
               {/* SOURCE PILLS - UPDATED LOGIC */}
